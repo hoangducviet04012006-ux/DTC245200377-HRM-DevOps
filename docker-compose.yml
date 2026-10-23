@@ -2,12 +2,12 @@
 # HỆ THỐNG QUẢN LÝ NHÂN SỰ (HRM) - DOCKER COMPOSE CONFIGURATION
 # Đề tài 10: Quản lý nhân viên, phòng ban, chấm công
 # Sinh viên: Hoàng Đức Việt - MSSV: DTC245200377
-# Commit 2: Tích hợp Prometheus + Grafana Giám sát Container, Web & Database
+# Commit 3: Loki + Promtail LogQL + Security Hardening (Non-root, Network, Limits)
 # ==============================================================================
 
 services:
   # ----------------------------------------------------------------------------
-  # Cơ sở dữ liệu PostgreSQL 16
+  # Cơ sở dữ liệu PostgreSQL 16 (Hardened, Network Isolated)
   # ----------------------------------------------------------------------------
   hrm-postgres:
     image: postgres:16-alpine
@@ -22,6 +22,11 @@ services:
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - hrm-backend
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hrm_user} -d ${POSTGRES_DB:-hrm_db}"]
       interval: 10s
@@ -30,7 +35,7 @@ services:
       start_period: 10s
 
   # ----------------------------------------------------------------------------
-  # Ứng dụng Quản lý Nhân sự (Node.js Express + HTML/CSS/JS)
+  # Ứng dụng Web HRM Core (Non-root user node, Healthcheck, Metrics)
   # ----------------------------------------------------------------------------
   hrm-app:
     build:
@@ -54,9 +59,14 @@ services:
       - hrm-backend
       - hrm-frontend
       - hrm-monitoring
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 384M
 
   # ----------------------------------------------------------------------------
-  # Công cụ Quản trị Cơ sở dữ liệu pgAdmin 4 Web GUI
+  # pgAdmin 4 Web GUI (Pre-configured DB Connection)
   # ----------------------------------------------------------------------------
   hrm-pgadmin:
     image: dpage/pgadmin4:8.11
@@ -78,9 +88,14 @@ services:
     networks:
       - hrm-backend
       - hrm-frontend
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 384M
 
   # ----------------------------------------------------------------------------
-  # Nginx Reverse Proxy (HTTPS/TLS + Security Headers)
+  # Nginx Reverse Proxy (SSL/TLS + Security Headers Hardening)
   # ----------------------------------------------------------------------------
   hrm-nginx:
     image: nginx:1.25-alpine
@@ -97,6 +112,11 @@ services:
       - ./nginx/ssl:/etc/nginx/ssl:ro
     networks:
       - hrm-frontend
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
 
   # ----------------------------------------------------------------------------
   # Prometheus PostgreSQL Exporter
@@ -130,6 +150,11 @@ services:
       - hrm-monitoring
       - hrm-backend
       - hrm-frontend
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
 
   # ----------------------------------------------------------------------------
   # Grafana Visualization & Analytics
@@ -148,11 +173,54 @@ services:
       GF_USERS_ALLOW_SIGN_UP: 'false'
     volumes:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards/hrm:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana-dashboards:ro
       - hrm_grafana_data:/var/lib/grafana
     networks:
       - hrm-monitoring
       - hrm-frontend
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  # ----------------------------------------------------------------------------
+  # Grafana Loki - Log Aggregation Engine
+  # ----------------------------------------------------------------------------
+  hrm-loki:
+    image: grafana/loki:latest
+    container_name: hrm-loki
+    restart: unless-stopped
+    ports:
+      - "${LOKI_PORT:-3101}:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./logging/loki/loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - hrm_loki_data:/loki
+    networks:
+      - hrm-monitoring
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  # ----------------------------------------------------------------------------
+  # Promtail - Log Shipping Agent
+  # ----------------------------------------------------------------------------
+  hrm-promtail:
+    image: grafana/promtail:latest
+    container_name: hrm-promtail
+    restart: unless-stopped
+    depends_on:
+      - hrm-loki
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./logging/promtail/promtail-config.yaml:/etc/promtail/config.yml:ro
+    networks:
+      - hrm-monitoring
 
 # ------------------------------------------------------------------------------
 # Cấu hình Mạng Cách ly (Network Isolation - Hardening)
@@ -180,3 +248,5 @@ volumes:
     name: hrm_prometheus_data
   hrm_grafana_data:
     name: hrm_grafana_data
+  hrm_loki_data:
+    name: hrm_loki_data

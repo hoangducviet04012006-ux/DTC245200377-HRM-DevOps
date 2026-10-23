@@ -7,3 +7,10 @@ datasources:
     url: http://hrm-prometheus:9090
     isDefault: true
     editable: true
+
+  - name: Loki-HRM
+    type: loki
+    access: proxy
+    url: http://hrm-loki:3100
+    isDefault: false
+    editable: true
