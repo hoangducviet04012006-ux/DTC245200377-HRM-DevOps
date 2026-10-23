@@ -1,0 +1,9 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus-HRM
+    type: prometheus
+    access: proxy
+    url: http://hrm-prometheus:9090
+    isDefault: true
+    editable: true

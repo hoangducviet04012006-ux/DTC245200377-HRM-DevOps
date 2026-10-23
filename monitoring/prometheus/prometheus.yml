@@ -1,0 +1,39 @@
+global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+
+scrape_configs:
+  # Giám sát chính Prometheus
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Giám sát ứng dụng Web HRM (Express / Node.js Metrics)
+  - job_name: 'hrm-app'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['hrm-app:3000']
+        labels:
+          app: 'hrm-core'
+          environment: 'production'
+
+  # Giám sát Cơ sở dữ liệu PostgreSQL
+  - job_name: 'hrm-postgres'
+    static_configs:
+      - targets: ['hrm-postgres-exporter:9187']
+        labels:
+          db: 'hrm-postgres-16'
+
+  # Giám sát Host System (CPU, RAM, Disk, Network)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['192.168.186.128:9100']
+        labels:
+          host: 'ubuntu-server'
+
+  # Giám sát Container Resources (cAdvisor)
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['192.168.186.128:8081']
+        labels:
+          role: 'container-metrics'
