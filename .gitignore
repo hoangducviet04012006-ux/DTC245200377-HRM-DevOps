@@ -1,0 +1,17 @@
+# Environment variables and secrets
+.env
+*.env
+*.pem
+*.key
+*.crt
+
+# Node dependencies and build
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Docker and OS files
+.DS_Store
+Thumbs.db
+volumes/
+data/

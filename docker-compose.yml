@@ -1,0 +1,119 @@
+# ==============================================================================
+# HỆ THỐNG QUẢN LÝ NHÂN SỰ (HRM) - DOCKER COMPOSE CONFIGURATION
+# Đề tài 10: Quản lý nhân viên, phòng ban, chấm công
+# Sinh viên: Hoàng Đức Việt - MSSV: DTC245200377
+# Commit 1: Web App + PostgreSQL DB + pgAdmin + Nginx Reverse Proxy (SSL/TLS)
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # Cơ sở dữ liệu PostgreSQL
+  # ----------------------------------------------------------------------------
+  hrm-postgres:
+    image: postgres:16-alpine
+    container_name: hrm-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hrm_db}
+      POSTGRES_USER: ${POSTGRES_USER:-hrm_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-HrmSecureP@ss2026!}
+    volumes:
+      - hrm_pgdata:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - hrm-backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hrm_user} -d ${POSTGRES_DB:-hrm_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ----------------------------------------------------------------------------
+  # Ứng dụng Quản lý Nhân sự (Node.js Express + HTML/CSS/JS)
+  # ----------------------------------------------------------------------------
+  hrm-app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    image: hrm-app:1.0
+    container_name: hrm-app
+    restart: unless-stopped
+    depends_on:
+      hrm-postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: hrm-postgres
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-hrm_db}
+      POSTGRES_USER: ${POSTGRES_USER:-hrm_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-HrmSecureP@ss2026!}
+      APP_PORT: ${APP_PORT:-3000}
+      NODE_ENV: production
+    networks:
+      - hrm-backend
+      - hrm-frontend
+
+  # ----------------------------------------------------------------------------
+  # Công cụ Quản trị Cơ sở dữ liệu pgAdmin 4 Web GUI
+  # ----------------------------------------------------------------------------
+  hrm-pgadmin:
+    image: dpage/pgadmin4:8.11
+    container_name: hrm-pgadmin
+    restart: unless-stopped
+    depends_on:
+      hrm-postgres:
+        condition: service_healthy
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@hrm.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-PgAdminSecure2026!}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    volumes:
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+      - hrm_pgadmin_data:/var/lib/pgadmin
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    networks:
+      - hrm-backend
+      - hrm-frontend
+
+  # ----------------------------------------------------------------------------
+  # Nginx Reverse Proxy (HTTPS/TLS + Security Headers)
+  # ----------------------------------------------------------------------------
+  hrm-nginx:
+    image: nginx:1.25-alpine
+    container_name: hrm-nginx
+    restart: unless-stopped
+    depends_on:
+      - hrm-app
+      - hrm-pgadmin
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - hrm-frontend
+
+# ------------------------------------------------------------------------------
+# Cấu hình Mạng Cách ly (Network Isolation - Hardening)
+# ------------------------------------------------------------------------------
+networks:
+  hrm-frontend:
+    driver: bridge
+    name: hrm-frontend-network
+  hrm-backend:
+    driver: bridge
+    name: hrm-backend-network
+    internal: false
+
+# ------------------------------------------------------------------------------
+# Phân vùng Dữ liệu (Persistent Data Volumes)
+# ------------------------------------------------------------------------------
+volumes:
+  hrm_pgdata:
+    name: hrm_pgdata
+  hrm_pgadmin_data:
+    name: hrm_pgadmin_data

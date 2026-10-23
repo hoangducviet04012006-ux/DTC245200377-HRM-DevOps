@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Hệ thống Quản lý Nhân sự hiện đại - Đề tài 10 Triển khai và Quản trị Hệ thống Phần mềm - MSSV: DTC245200377">
+    <title>HRM Enterprise - Quản Lý Nhân Sự & Chấm Công</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                </div>
+                <div class="brand-info">
+                    <h2>HRM Core</h2>
+                    <span class="badge-student">MSSV: DTC245200377</span>
+                </div>
+            </div>
+
+            <nav class="nav-menu">
+                <button class="nav-item active" data-tab="dashboard">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    <span>Tổng Quan</span>
+                </button>
+                <button class="nav-item" data-tab="employees">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+                    <span>Nhân Viên</span>
+                </button>
+                <button class="nav-item" data-tab="departments">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                    <span>Phòng Ban</span>
+                </button>
+                <button class="nav-item" data-tab="attendance">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span>Chấm Công</span>
+                </button>
+                <button class="nav-item" data-tab="system-status">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                    <span>Trạng Thái Hạ Tầng</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-card">
+                    <div class="avatar">HV</div>
+                    <div class="user-details">
+                        <strong>Hoàng Đức Việt</strong>
+                        <span>DevOps Administrator</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-wrapper">
+            <header class="topbar">
+                <div class="page-title">
+                    <h1 id="current-view-title">Bảng Điều Khiển Tổng Quan</h1>
+                    <p class="subtitle">Hệ thống Quản lý Nhân sự & Giám sát Hạ tầng Phân tán</p>
+                </div>
+                <div class="topbar-actions">
+                    <span class="live-clock" id="live-clock">--:--:--</span>
+                    <button class="btn btn-secondary" onclick="window.open('/pgadmin/', '_blank')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16"><path d="M4 7v10c0 2.21 3.58 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.58 4 8 4s8-1.79 8-4M4 7c0-2.21 3.58-4 8-4s8 1.79 8 4m0 5c0 2.21-3.58 4-8 4s-8-1.79-8-4"></path></svg>
+                        <span>pgAdmin DB</span>
+                    </button>
+                    <button class="btn btn-primary" id="btn-quick-action" onclick="openAddEmployeeModal()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        <span>Thêm Nhân Viên</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="content-body">
+                <!-- TAB 1: DASHBOARD -->
+                <section id="tab-dashboard" class="tab-pane active">
+                    <!-- Metric Cards Grid -->
+                    <div class="stats-grid">
+                        <div class="stat-card stat-blue">
+                            <div class="stat-icon">👥</div>
+                            <div class="stat-content">
+                                <span class="stat-label">Tổng Nhân Viên</span>
+                                <h3 id="stat-total-emp">0</h3>
+                                <span class="stat-sub text-success">Hoạt động trong hệ thống</span>
+                            </div>
+                        </div>
+                        <div class="stat-card stat-purple">
+                            <div class="stat-icon">🏢</div>
+                            <div class="stat-content">
+                                <span class="stat-label">Tổng Phòng Ban</span>
+                                <h3 id="stat-total-dept">0</h3>
+                                <span class="stat-sub">Khối chuyên trách</span>
+                            </div>
+                        </div>
+                        <div class="stat-card stat-emerald">
+                            <div class="stat-icon">⏱️</div>
+                            <div class="stat-content">
+                                <span class="stat-label">Đi Làm Hôm Nay</span>
+                                <h3 id="stat-present-today">0</h3>
+                                <span class="stat-sub text-emerald">Đã điểm danh đúng giờ</span>
+                            </div>
+                        </div>
+                        <div class="stat-card stat-amber">
+                            <div class="stat-icon">⚠️</div>
+                            <div class="stat-content">
+                                <span class="stat-label">Đi Muộn / Nghỉ</span>
+                                <h3 id="stat-late-today">0</h3>
+                                <span class="stat-sub text-amber">Cần theo dõi bổ sung</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Department Analytics & Quick Summary -->
+                    <div class="grid-2col">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Cơ Cấu Nhân Sự Theo Phòng Ban</h3>
+                            </div>
+                            <div class="card-body" id="dept-distribution-list">
+                                <div class="loading-spinner">Đang tải biểu đồ dữ liệu...</div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Thông Tin Kiến Trúc Triển Khai</h3>
+                            </div>
+                            <div class="card-body system-spec-list">
+                                <div class="spec-row">
+                                    <span class="spec-name">Đề tài tốt nghiệp/bài thi:</span>
+                                    <span class="spec-val">Đề 10 - Quản lý Nhân sự (HRM)</span>
+                                </div>
+                                <div class="spec-row">
+                                    <span class="spec-name">Sinh viên thực hiện:</span>
+                                    <span class="spec-val">Hoàng Đức Việt (MSSV: DTC245200377)</span>
+                                </div>
+                                <div class="spec-row">
+                                    <span class="spec-name">Reverse Proxy & SSL:</span>
+                                    <span class="spec-val text-success">Nginx 1.25 Alpine (HTTPS/TLS + Security Headers)</span>
+                                </div>
+                                <div class="spec-row">
+                                    <span class="spec-name">Cơ sở dữ liệu chính:</span>
+                                    <span class="spec-val">PostgreSQL 16 Alpine + pgAdmin4</span>
+                                </div>
+                                <div class="spec-row">
+                                    <span class="spec-name">Hệ thống Giám sát:</span>
+                                    <span class="spec-val">Prometheus + Grafana + Loki + Promtail</span>
+                                </div>
+                                <div class="spec-row">
+                                    <span class="spec-name">Container Hardening:</span>
+                                    <span class="spec-val text-success">Non-root User, Network Isolation, Strict CSP</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB 2: EMPLOYEES -->
+                <section id="tab-employees" class="tab-pane">
+                    <div class="card">
+                        <div class="card-header flex-between">
+                            <div class="filter-group">
+                                <input type="text" id="emp-search-input" placeholder="🔍 Tìm theo tên, mã NV, email..." oninput="debounceLoadEmployees()">
+                                <select id="emp-dept-filter" onchange="loadEmployees()">
+                                    <option value="">Tất cả phòng ban</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-primary" onclick="openAddEmployeeModal()">+ Thêm Nhân Viên Mới</button>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Mã NV</th>
+                                            <th>Họ và Tên</th>
+                                            <th>Phòng Ban</th>
+                                            <th>Chức Vụ</th>
+                                            <th>Lương Cơ Bản</th>
+                                            <th>Trạng Thái</th>
+                                            <th>Hành Động</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="employees-table-body">
+                                        <tr><td colspan="7" class="text-center py-4">Đang tải danh sách nhân viên...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB 3: DEPARTMENTS -->
+                <section id="tab-departments" class="tab-pane">
+                    <div class="card">
+                        <div class="card-header flex-between">
+                            <h3>Danh Sách Các Phòng Ban Chuyên Trách</h3>
+                            <button class="btn btn-primary" onclick="openAddDeptModal()">+ Thêm Phòng Ban Mới</button>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Mã PB</th>
+                                            <th>Tên Phòng Ban</th>
+                                            <th>Trưởng Phòng</th>
+                                            <th>Số Lượng NV</th>
+                                            <th>Mô Tả Chức Năng</th>
+                                            <th>Hành Động</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="departments-table-body">
+                                        <tr><td colspan="6" class="text-center py-4">Đang tải danh sách phòng ban...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB 4: ATTENDANCE -->
+                <section id="tab-attendance" class="tab-pane">
+                    <div class="card">
+                        <div class="card-header flex-between">
+                            <div class="filter-group">
+                                <label for="attendance-date" style="font-weight:600;margin-right:8px;">Ngày chấm công:</label>
+                                <input type="date" id="attendance-date" onchange="loadAttendance()">
+                            </div>
+                            <span class="badge-notice">Hệ thống tự động ghi nhận Check-in và Check-out với Time Transaction</span>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Mã NV</th>
+                                            <th>Họ Tên</th>
+                                            <th>Phòng Ban</th>
+                                            <th>Giờ Vào (Check-in)</th>
+                                            <th>Giờ Ra (Check-out)</th>
+                                            <th>Trạng Thái</th>
+                                            <th>Thao Tác Nhanh</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="attendance-table-body">
+                                        <tr><td colspan="7" class="text-center py-4">Đang tải bảng chấm công...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB 5: SYSTEM STATUS -->
+                <section id="tab-system-status" class="tab-pane">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Kiểm Tra Sức Khỏe Dịch Vụ & Cấu Hình Hardening</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="health-box">
+                                <div class="health-indicator status-online" id="health-indicator"></div>
+                                <div class="health-meta">
+                                    <h4 id="health-title">Dịch Vụ HRM Core: ĐANG HOẠT ĐỘNG</h4>
+                                    <p id="health-sub">Kết nối PostgreSQL và Express API ổn định</p>
+                                </div>
+                                <button class="btn btn-secondary" onclick="checkHealth()">Kiểm Tra Lại</button>
+                            </div>
+
+                            <h4 style="margin: 24px 0 12px 0;">Cổng & Dịch Vụ Phục Vụ Giám Sát:</h4>
+                            <div class="service-links-grid">
+                                <a href="/health" target="_blank" class="service-link-card">
+                                    <strong>API Health Status</strong>
+                                    <code>GET /health</code>
+                                    <span>JSON phản hồi trạng thái container và kết nối DB</span>
+                                </a>
+                                <a href="/metrics" target="_blank" class="service-link-card">
+                                    <strong>Prometheus Metrics</strong>
+                                    <code>GET /metrics</code>
+                                    <span>Xuất dữ liệu chuẩn OpenMetrics cho hệ thống giám sát</span>
+                                </a>
+                                <a href="/pgadmin/" target="_blank" class="service-link-card">
+                                    <strong>pgAdmin 4 Web GUI</strong>
+                                    <code>/pgadmin/</code>
+                                    <span>Trình quản lý cơ sở dữ liệu PostgreSQL trực quan</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL: Thêm nhân viên -->
+    <div id="modal-employee" class="modal-backdrop">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Thêm Nhân Viên Mới</h3>
+                <button class="btn-close" onclick="closeModal('modal-employee')">&times;</button>
+            </div>
+            <form id="form-employee" onsubmit="handleCreateEmployee(event)">
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Mã Nhân Viên *</label>
+                            <input type="text" name="emp_code" required placeholder="VD: NV009">
+                        </div>
+                        <div class="form-group">
+                            <label>Họ và Tên *</label>
+                            <input type="text" name="full_name" required placeholder="VD: Trần Hoàng Nam">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Email Doanh Nghiệp *</label>
+                            <input type="email" name="email" required placeholder="nam.tran@hrm.local">
+                        </div>
+                        <div class="form-group">
+                            <label>Số Điện Thoại</label>
+                            <input type="text" name="phone" placeholder="0901234567">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Phòng Ban *</label>
+                            <select name="department_id" id="modal-emp-dept-select" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Chức Danh / Vị Trí *</label>
+                            <input type="text" name="position" required placeholder="VD: Kỹ sư Phần mềm">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Mức Lương Cơ Bản (VNĐ) *</label>
+                            <input type="number" name="salary" value="15000000" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Ngày Bắt Đầu Làm Việc</label>
+                            <input type="date" name="hire_date" id="modal-emp-hire-date">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-employee')">Hủy Bỏ</button>
+                    <button type="submit" class="btn btn-primary">Lưu Nhân Viên</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Thêm phòng ban -->
+    <div id="modal-department" class="modal-backdrop">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Thêm Phòng Ban Mới</h3>
+                <button class="btn-close" onclick="closeModal('modal-department')">&times;</button>
+            </div>
+            <form id="form-department" onsubmit="handleCreateDepartment(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Mã Phòng Ban *</label>
+                        <input type="text" name="code" required placeholder="VD: PB-RD">
+                    </div>
+                    <div class="form-group">
+                        <label>Tên Phòng Ban *</label>
+                        <input type="text" name="name" required placeholder="VD: Phòng Nghiên Cứu & Phát Triển (R&D)">
+                    </div>
+                    <div class="form-group">
+                        <label>Trưởng Phòng Phụ Trách</label>
+                        <input type="text" name="manager_name" placeholder="VD: Đặng Quốc Toàn">
+                    </div>
+                    <div class="form-group">
+                        <label>Mô Tả Chức Năng</label>
+                        <textarea name="description" rows="3" placeholder="Nhiệm vụ, chức năng trọng tâm..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-department')">Hủy Bỏ</button>
+                    <button type="submit" class="btn btn-primary">Lưu Phòng Ban</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
