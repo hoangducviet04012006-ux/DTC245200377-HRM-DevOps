@@ -1,50 +1,56 @@
 ================================================================================
-BÁO CÁO MINH CHỨNG & KIỂM THỬ TỔNG THỂ HỆ THỐNG HRM CORE (PROMPT 7)
+BÁO CÁO MINH CHỨNG & KIỂM THỬ TỔNG THỂ HỆ THỐNG HRM CORE (PROMPT 7 - CHÍNH THỨC)
 HỌC PHẦN: TRIỂN KHAI VÀ QUẢN TRỊ HỆ THỐNG PHẦN MỀM
 Sinh viên: Hoàng Đức Việt | MSSV: DTC245200377 | Lớp: K23 - Khoa CNTT (ICTU)
 Đề tài: Đề số 10 - Hệ thống Quản lý Nhân sự (HRM Core)
 Máy chủ triển khai: ubuntu@192.168.186.128 | Thư mục: /home/ubuntu/hrm
 GitHub Repo: https://github.com/hoangducviet04012006-ux/DTC245200377-HRM-DevOps.git
-Thời điểm kiểm tra: 2026-10-24 17:08:00 (GMT+7)
+Thời điểm kiểm tra & cập nhật: 2026-10-24 17:16:00 (GMT+7)
 ================================================================================
 
-PHẦN 1: KẾT QUẢ XÁC MINH 4 TIÊU CHÍ TIÊN QUYẾT (PRE-CONDITIONS)
+PHẦN 1: XÁC MINH CÁC TIÊU CHÍ KỸ THUẬT & ĐIỀU CHỈNH ĐỘ CHÍNH XÁC
 --------------------------------------------------------------------------------
-1.1. Tự động khởi tạo & cấp quyền 2 role khi cài mới từ Repo (Fresh Install)
-- Cơ chế: Được tự động hóa hoàn toàn bằng 2 script lưu trữ trong Git:
-  + database/init.sql: Tự động khởi tạo cấu trúc bảng, seed data, tạo role hrm_app_user và hrm_exporter_user (nếu chưa có), phân quyền DML (SELECT, INSERT, UPDATE, DELETE) và pg_monitor. Sử dụng EXECUTE format('GRANT CONNECT ON DATABASE %I ...', current_database()) để tương thích mọi tên DB.
-  + database/init-roles.sh: Được gắn kết vào /docker-entrypoint-initdb.d/02-init-roles.sh:ro trong docker-compose.yml. Script tự động đặt mật khẩu cho 2 role từ biến môi trường APP_DB_PASSWORD và EXPORTER_DB_PASSWORD khi container PostgreSQL khởi tạo lần đầu trên volume mới.
-- Kiểm chứng thực tế: Đã kiểm chứng thành công bằng container độc lập hrm-fresh-test-pg chạy trên cổng 5439 với volume tạm ephemeral. Hai role được tạo và cấp quyền hoàn toàn tự động, ứng dụng và exporter kết nối truy vấn thành công. Không phụ thuộc lệnh thủ công, không reset volume chính hrm_pgdata.
-- Trạng thái: ĐẠT 100%.
+1.1. Xác minh Phiên bản Loki và Promtail thực tế
+- Kiểm tra qua Docker Inspect và Version Flag trong Container thực tế:
+  + Dịch vụ hrm-loki: Image grafana/loki:3.7.7, phiên bản thực tế chạy là Loki 3.7.7 (branch: release-3.7.x, commit: 7a40404f).
+  + Dịch vụ hrm-promtail: Image grafana/promtail:3.6.8, phiên bản thực tế chạy là Promtail 3.6.8 (branch: release-3.6.x, commit: 138c391f).
+- Đính chính tài liệu: Đã sửa toàn bộ tài liệu (README, Báo cáo Word, Báo cáo Markdown) ghi đúng phiên bản thực tế Loki 3.7.7 và Promtail 3.6.8; loại bỏ hoàn toàn con số nhầm lẫn 2.9.2 trong các bản thảo trước. Không tự ý thay đổi image đang chạy ổn định.
 
-1.2. Kiểm tra bản ghi test và dọn dẹp dữ liệu kiểm thử
-- Dữ liệu test tạo ra trong các phiên kiểm thử trước:
-  + Nhân viên test NV999 và phòng ban PB-SEC: Đã dọn dẹp sạch sẽ ở Prompt 6.
-  + Bản ghi chấm công test (ID 9 ngày 2026-10-24 tạo lúc 15:40:45 qua API check-in): Đã xác định chính xác và dọn dẹp triệt để (DELETE FROM attendance WHERE id = 9).
-- Số lượng bản ghi thực tế sau kiểm tra (đối chiếu trực tiếp với database):
-  + Số phòng ban (departments): ĐÚNG 4 BẢN GHI (PB-IT, PB-HR, PB-KT, PB-KD).
-  + Số nhân viên (employees): ĐÚNG 8 BẢN GHI (NV001 đến NV008, trạng thái active).
-  + Số bản ghi chấm công (attendance): ĐÚNG 8 BẢN GHI (tương ứng 8 nhân viên mẫu ngày CURRENT_DATE).
-  + Số tài khoản người dùng (users): ĐÚNG 1 BẢN GHI (tài khoản quản trị admin).
-- Cam kết: Dữ liệu gốc nguyên vẹn 100%, không xóa nhầm dữ liệu nghiệp vụ gốc.
-- Trạng thái: ĐẠT 100%.
+1.2. Kiểm chứng Cài mới từ Repo (Fresh Install Verification)
+- Giai đoạn 1 (Prompt 7 ban đầu): Đã kiểm tra container độc lập hrm-fresh-test-pg để chứng minh database/init.sql và database/init-roles.sh tự động khởi tạo bảng và 2 role least-privilege (hrm_app_user, hrm_exporter_user) với mật khẩu từ biến môi trường.
+  * Giới hạn ghi nhận: Lần kiểm tra này chỉ chứng minh tầng PostgreSQL và role, chưa chứng minh toàn bộ 11 container của stack.
+- Giai đoạn 2 (Kiểm chứng toàn bộ Stack độc lập):
+  * Cấu hình: Tạo project riêng biệt 'hrm-fresh-test' với volume riêng (fresh_test_pgdata, fresh_test_pgadmin_data, fresh_test_grafana_data, fresh_test_loki_data), network riêng (fresh-frontend-net, fresh-backend-net, fresh-monitoring-net), và cổng host riêng (Nginx: 8088/8443, pgAdmin: 5059, Grafana: 3009, Prometheus: 9099, Loki: 3109). Tuyệt đối không dùng volume hệ thống chính hrm_pgdata.
+  * Kết quả thực thi thực tế:
+    + Cả 11 container khởi chạy Up và Healthy tự động từ repo mã nguồn.
+    + PostgreSQL nạp dữ liệu mẫu: Đúng 4 phòng ban, 8 nhân viên, 8 chấm công, 1 user admin.
+    + Hai role fresh_app_user và fresh_exporter_user được tạo tự động với mật khẩu môi trường.
+    + Kiểm tra quyền hạn least privilege: fresh_app_user đọc ghi dữ liệu thành công nhưng bị từ chối lệnh DDL (CREATE TABLE -> permission denied for schema public).
+    + Exporter đọc metrics thành công qua role giám sát.
+    + Dọn dẹp sạch sẽ: Lệnh 'docker compose down -v' đã xóa sạch toàn bộ container và volume test, bảo đảm an toàn tuyệt đối cho stack HRM chính và bài lab cũ.
+- Kết luận: ĐÃ CHỨNG MINH 100% TOÀN BỘ STACK ĐƯỢC CÀI ĐẶT TỰ ĐỘNG TỪ REPO.
 
-1.3. Phân biệt quét Secret trong File hiện tại với Lịch sử Git
-- Quét Secret trong working tree hiện tại:
-  + File cấu hình nhạy cảm .env và khóa riêng SSL (*.pem, *.key) nằm trong .gitignore.
-  + Đã quét toàn bộ mã nguồn Git hiện tại (git grep): KHÔNG CÒN BẤT KỲ MẬT KHẨU NÀO, không còn fallback default password trong server.js, docker-compose.yml, README.md, và đã loại bỏ hoàn toàn giá trị mặc định trong form HTML đăng nhập.
-  + Kết quả quét working tree: SẠCH 100%.
-- Đối với Lịch sử Git:
-  + Một số commit đầu bài lab/ban đầu có thể chứa dấu vết mật khẩu cũ.
-  + Tuân thủ nghiêm ngặt chỉ thị: KHÔNG FORCE PUSH, KHÔNG REWRITE GIT HISTORY để bảo toàn tính toàn vẹn lịch sử commit và cây thư mục Git.
-  + Tất cả mật khẩu đang hoạt động trên máy chủ triển khai đều là mật khẩu mạnh ngẫu nhiên được cấp riêng ngoài Git qua .env.
-- Trạng thái: ĐẠT (Đúng quy chuẩn bảo mật và quản trị Git).
+1.3. Dữ liệu Nghiệp vụ Thực tế trong Cơ sở Dữ liệu
+- Bản ghi test: Đã dọn dẹp sạch sẽ nhân viên NV999, phòng ban PB-SEC và bản ghi chấm công kiểm thử ID 9.
+- Số lượng bản ghi thực tế đối chiếu trực tiếp từ PostgreSQL:
+  + Bảng departments: 4 bản ghi (PB-IT, PB-HR, PB-KT, PB-KD).
+  + Bảng employees: 8 bản ghi (NV001 đến NV008, trạng thái active).
+  + Bảng attendance: 8 bản ghi (tương ứng 8 nhân viên mẫu ngày hiện tại).
+  + Bảng users: 1 bản ghi (admin).
+- Cam kết: Dữ liệu gốc nguyên vẹn 100%.
 
-1.4. Trạng thái kiểm chứng pgAdmin UI
-- Kiểm tra backend HTTP: Gửi request tới http://192.168.186.128:5050/ trả về HTTP 302 Foundation chuyển hướng đến /login, xác nhận container pgAdmin 4 đang hoạt động bình thường và kết nối được mạng backend.
-- Đánh giá giao diện người dùng (UI): Do không có phiên trình duyệt tương tác có trạng thái thực tế để đăng nhập email/mật khẩu và click mở bảng, hệ thống ghi nhận trung thực:
-  ==> TRẠNG THÁI: "CHƯA KIỂM CHỨNG QUA UI TRÌNH DUYỆT".
-  ==> Sinh viên cần tự đăng nhập trên trình duyệt máy trạm tại http://192.168.186.128:5050 để chụp ảnh minh chứng thực tế cho báo cáo.
+1.4. Quét Secret trong Working Tree & Lịch sử Git
+- Quét Working Tree hiện tại:
+  + SẠCH 100%. Không còn bất kỳ mật khẩu nào hardcode trong mã nguồn Node.js, Compose, README, hay giao diện HTML (đã gỡ bỏ giá trị mặc định Admin@123 trong placeholder form login).
+  + Mọi biến nhạy cảm được quản lý qua file .env (nằm trong .gitignore).
+- Quét Lịch sử Git (git log -p -S "PASSWORD"):
+  + Phát hiện loại secret trong lịch sử: Trong Commit 1 (d4f40cd), file docker-compose.yml có chứa fallback default password cho POSTGRES_PASSWORD và PGADMIN_DEFAULT_PASSWORD; và tài khoản admin ban đầu sử dụng Admin@123.
+  + Tình trạng xử lý: Toàn bộ mật khẩu dự phòng đã bị loại bỏ khỏi working tree; mật khẩu thực tế đang chạy trên máy chủ triển khai đã được THAY ĐỔI/XOAY VÒNG (ROTATED) sang mật khẩu ngẫu nhiên độ an toàn cao ngoài Git qua .env.
+  + Tuân thủ nguyên tắc: Không force-push hoặc viết lại lịch sử commit để bảo toàn cây Git và lịch sử nộp bài.
+
+1.5. Trạng thái Kiểm chứng pgAdmin UI
+- Backend: HTTP 302 chuyển hướng hợp lệ đến /login.
+- Trạng thái UI: "CHƯA KIỂM CHỨNG QUA UI TRÌNH DUYỆT". Cần sinh viên trực tiếp đăng nhập và mở bảng dữ liệu trên trình duyệt máy trạm.
 
 --------------------------------------------------------------------------------
 PHẦN 2: BẢNG ĐỐI CHIẾU TIÊU CHÍ ĐỀ BÀI -> BẰNG CHỨNG -> TRẠNG THÁI
@@ -57,12 +63,12 @@ PHẦN 2: BẢNG ĐỐI CHIẾU TIÊU CHÍ ĐỀ BÀI -> BẰNG CHỨNG -> TRẠ
 | 4 | Cơ sở dữ liệu PostgreSQL | PostgreSQL 16 Alpine, dữ liệu lưu hrm_pgdata | Container hrm-postgres Up & Healthy, 4 bảng, 8 NV, 4 PB, 8 chấm công | ĐẠT |
 | 5 | Quản trị DB qua pgAdmin | pgAdmin 4 Container kết nối qua hrm-backend | Container hrm-pgadmin Up, HTTP 302 chuyển hướng login; UI chưa kiểm chứng | ĐẠT (Backend) / Chưa KC (UI) |
 | 6 | Đóng gói Container & Docker Compose | Docker Compose dự án hrm gồm 11 dịch vụ | 11 containers Up/Healthy, tách 3 mạng nội bộ | ĐẠT |
-| 7 | Nginx Reverse Proxy & SSL/TLS | Nginx 1.25 Alpine, SSL tự ký SAN, port 80/443 | curl -k HTTPS 200, HTTP 301 chuyển hướng HTTPS, HSTS, CSP đầy đủ | ĐẠT |
-| 8 | Giám sát Metrics Container | cAdvisor (hrm-cadvisor) nội bộ tích hợp Prometheus | Metric container_cpu_usage_seconds_total{project="hrm"} thu thập đầy đủ | ĐẠT |
+| 7 | Nginx Reverse Proxy & SSL/TLS | Nginx 1.25 Alpine, SSL tự ký SAN, port 80/443 | curl -k HTTPS 200, HTTP 301 chuyển hướng HTTPS, HSTS, CSP đầy đủ (Cảnh báo untrusted do tự ký) | ĐẠT |
+| 8 | Giám sát Metrics Container | cAdvisor (hrm-cadvisor) nội bộ tích hợp Prometheus | Metric container_cpu_usage_seconds_total thu thập chuẩn xác cho 11 container HRM | ĐẠT |
 | 9 | Giám sát Metrics Web Server | Nginx Exporter nội bộ + Nginx stub_status | Scrape target UP, thu thập nginx_http_requests_total | ĐẠT |
 | 10| Giám sát Metrics Database | postgres-exporter dùng role hrm_exporter_user | Scrape target UP, pg_stat_database thu thập transactions, connections | ĐẠT |
-| 11| Dashboard Grafana trực quan | Grafana 10.4.1 Provisioning Dashboard tự động | Dashboard hiển thị CPU, RAM, Network, Nginx RPS, Postgres Tx thật | ĐẠT |
-| 12| Thu thập Log tập trung Loki | Loki 2.9.2 + Promtail 2.9.2 Docker SD | Promtail tự động đẩy log 11 container hrm về Loki qua cổng 3101 | ĐẠT |
+| 11| Dashboard Grafana trực quan | Grafana 13.2.1 Provisioning Dashboard tự động | Dashboard hiển thị CPU, RAM, Network, Nginx RPS, Postgres Tx thật | ĐẠT |
+| 12| Thu thập Log tập trung Loki | Loki 3.7.7 + Promtail 3.6.8 Docker SD | Promtail tự động đẩy log 11 container hrm về Loki qua cổng 3101 | ĐẠT |
 | 13| Truy vấn LogQL chuẩn | 3 câu truy vấn LogQL trong Grafana Explore | Khớp chính xác nhãn thực tế: Nginx logs, Login 401 vs 200, Log rate | ĐẠT |
 | 14| Hardening: Non-root App | USER node (UID 1000) trong Dockerfile | docker exec hrm-app id -> uid=1000(node) gid=1000(node) | ĐẠT |
 | 15| Hardening: Cô lập mạng DB | hrm-backend network nội bộ, không publish 5432 | ss -tulpn không thấy cổng 5432 trên host | ĐẠT |
@@ -70,136 +76,82 @@ PHẦN 2: BẢNG ĐỐI CHIẾU TIÊU CHÍ ĐỀ BÀI -> BẰNG CHỨNG -> TRẠ
 | 17| Hardening: Least Privilege DB | hrm_app_user (DML) & hrm_exporter_user (stats) | Test thử CREATE TABLE bị từ chối; Exporter đọc users bị từ chối | ĐẠT |
 
 --------------------------------------------------------------------------------
-PHẦN 3: BÁO CÁO ĐỐI CHIẾU TÀI NGUYÊN & BỘ NHỚ GRAFANA
+PHẦN 3: TÊN JOB VÀ TARGET PROMETHEUS THỰC TẾ
 --------------------------------------------------------------------------------
-- Giới hạn cấu hình (docker-compose.yml):
-  cpus: '0.5'
-  memory: 512M
-- Dữ liệu đo đạc thực tế tại cùng thời điểm:
-  + Lệnh docker stats (Working Set): 264.8 MiB / 512 MiB (51.72% RAM).
-  + Metric Prometheus container_memory_working_set_bytes: 277,950,464 bytes (~265.07 MiB).
-  + Metric Prometheus container_memory_usage_bytes: 417,878,016 bytes (~398.52 MiB bao gồm cả page cache có thể thu hồi).
-  + Kiểm tra trạng thái OOM: OOMKilled = false, RestartCount = 0.
-- Đánh giá kỹ thuật:
-  Mức sử dụng RAM thực tế của Grafana dao động quanh 265MB, thấp hơn nhiều so với hạn mức 512MB. Hệ thống hoạt động rất ổn định, không có hiện tượng giật lag hay rò rỉ bộ nhớ. Việc tăng trần RAM lên 512MB giúp giảm đáng kể nguy cơ OOM khi tải dashboard nặng, không cần thiết phải tăng thêm.
-
---------------------------------------------------------------------------------
-PHẦN 4: DANH SÁCH 12 ẢNH MINH CHỨNG CẦN CHỤP KÈM URL VÀ THAO TÁC CỤ THỂ
---------------------------------------------------------------------------------
-Dưới đây là danh sách 12 ảnh chụp màn hình bắt buộc cần đưa vào Báo cáo môn học để đạt điểm tối đa:
-
-Ảnh 1: Giao diện Ứng dụng HRM Core - Quản lý Danh sách Nhân viên
-- URL: https://192.168.186.128
-- Thao tác: Mở trình duyệt truy cập địa chỉ trên, chọn tab "Nhân viên". Bấm hiển thị danh sách 8 nhân viên hiện có, có bảng phân trang và các nút Thêm, Sửa, Xóa.
-- Mục tiêu minh chứng: Chứng minh ứng dụng web chạy qua HTTPS thành công, giao diện hiển thị dữ liệu nhân viên từ PostgreSQL.
-
-Ảnh 2: Giao diện Quản lý Phòng ban & Ràng buộc toàn vẹn
-- URL: https://192.168.186.128
-- Thao tác: Chọn tab "Phòng ban", hiển thị danh sách 4 phòng ban (IT, Nhân sự, Kế toán, Kinh doanh). Bấm nút "Xóa" thử phòng ban IT để kích hoạt hộp thoại cảnh báo ràng buộc "Không thể xóa phòng ban đang có nhân viên".
-- Mục tiêu minh chứng: Chức năng nghiệp vụ phòng ban và kiểm soát toàn vẹn dữ liệu.
-
-Ảnh 3: Giao diện Điểm danh & Chấm công theo thời gian thực
-- URL: https://192.168.186.128
-- Thao tác: Chọn tab "Chấm công". Thấy danh sách điểm danh mẫu hôm nay với các trạng thái (Đúng giờ, Đi muộn, Nghỉ phép).
-- Mục tiêu minh chứng: Nghiệp vụ chấm công cơ bản theo đề bài.
-
-Ảnh 4: Hộp thoại Đăng nhập Quản trị & Cơ chế bảo mật CSRF / Cookie
-- URL: https://192.168.186.128
-- Thao tác: Bấm nút "Đăng nhập Quản trị", nhập username admin và mật khẩu từ file .env. Bấm F12 mở DevTools tab Application -> Cookies xem cookie session có cờ HttpOnly, SameSite=Lax và Secure.
-- Mục tiêu minh chứng: Đăng nhập quản trị hỗ trợ bảo mật, cookie an toàn.
-
-Ảnh 5: Nginx Reverse Proxy - Chứng chỉ SSL/TLS & HTTP Security Headers
-- URL: https://192.168.186.128
-- Thao tác: Bấm vào biểu tượng ổ khóa cạnh URL trình duyệt -> Xem chi tiết chứng chỉ số (Subject Alternative Name: 192.168.186.128, localhost). Bấm F12 -> Network -> Click request trang chủ -> Xem Response Headers có Strict-Transport-Security, Content-Security-Policy, X-Frame-Options.
-- Mục tiêu minh chứng: Cổng Reverse Proxy HTTPS bảo mật.
-
-Ảnh 6: Giao diện Quản trị Cơ sở Dữ liệu pgAdmin 4
-- URL: http://192.168.186.128:5050
-- Thao tác: Đăng nhập với admin@hrm.com và mật khẩu từ .env. Mở Server "PostgreSQL HRM Database" -> Databases -> hrm_db -> Schemas -> public -> Tables -> Xem dữ liệu bảng employees.
-- Mục tiêu minh chứng: Quản trị DB trực quan bằng công cụ pgAdmin theo đúng yêu cầu đề.
-
-Ảnh 7: Giao diện Prometheus - Danh sách Targets Thu thập Chỉ số
-- URL: http://192.168.186.128:9091/targets
-- Thao tác: Truy cập trang Targets, chụp màn hình thấy toàn bộ 4 scrape job (hrm-app, hrm-cadvisor, hrm-nginx-exporter, hrm-postgres-exporter) đều ở trạng thái State = UP (màu xanh).
-- Mục tiêu minh chứng: Prometheus hoạt động chuẩn xác, cào đủ metrics của 3 nhóm (container, web server, database).
-
-Ảnh 8: Dashboard Giám Sát Tổng Thể Grafana - HRM Core Performance
-- URL: http://192.168.186.128:3001
-- Thao tác: Đăng nhập tài khoản admin. Mở dashboard "HRM Core - Giám Sát Hiệu Năng Hệ Thống (DTC245200377)". Chụp toàn cảnh các panel: Số container HRM (11), CPU Usage, RAM Usage, Network I/O.
-- Mục tiêu minh chứng: Giám sát tài nguyên container theo thời gian thực.
-
-Ảnh 9: Panel Hiệu Năng Ứng Dụng & Cơ Sở Dữ Liệu trên Grafana
-- URL: http://192.168.186.128:3001
-- Thao tác: Cuộn xuống phần Nginx Request Rate (hiển thị biểu đồ RPS thật) và PostgreSQL Transaction Rate (biểu đồ commit/rollback thật).
-- Mục tiêu minh chứng: Giám sát chuyên sâu Nginx và PostgreSQL với dữ liệu biến động thật.
-
-Ảnh 10: Truy vấn LogQL 1 & 3 trên Grafana Explore - Lưu lượng Nginx Gateway
-- URL: http://192.168.186.128:3001/explore
-- Thao tác: Chọn Datasource "Loki". Nhập câu lệnh LogQL: {project="hrm", container="hrm-nginx"}. Bấm "Run query" thấy luồng log của Nginx Reverse Proxy. Thử tiếp câu lệnh đếm: sum(count_over_time({project="hrm", container="hrm-nginx"}[5m])).
-- Mục tiêu minh chứng: Hệ thống thu thập log tập trung Loki + Promtail hoạt động tốt.
-
-Ảnh 11: Truy vấn LogQL 2 - Phân biệt Đăng nhập Thất bại (401) và Thành công (200)
-- URL: http://192.168.186.128:3001/explore
-- Thao tác: Nhập câu lệnh LogQL: {project="hrm", container="hrm-nginx"} |= "POST /api/auth/login" |= " 401 " hiển thị các dòng log màu đỏ cảnh báo đăng nhập sai; sau đó đổi thành |= " 200 " hiển thị các dòng đăng nhập thành công.
-- Mục tiêu minh chứng: Khả năng phân tích và phát hiện sự kiện an ninh mạng qua log tập trung.
-
-Ảnh 12: Minh chứng 4 Biện pháp Hardening & Phân quyền Tối thiểu DB
-- Cửa sổ dòng lệnh Terminal SSH:
-  + Lệnh 1: docker exec hrm-app id (hiển thị uid=1000(node)).
-  + Lệnh 2: ss -tulpn | grep 5432 (chứng minh cổng 5432 không mở ra host).
-  + Lệnh 3: docker exec hrm-postgres psql -U hrm_app_user -d hrm_db -c "CREATE TABLE test_fail(id int);" (báo permission denied for schema public).
-  + Lệnh 4: docker exec hrm-postgres psql -U hrm_exporter_user -d hrm_db -c "SELECT * FROM users;" (báo permission denied for table users).
-- Mục tiêu minh chứng: Áp dụng đầy đủ 4 nguyên tắc hardening và least privilege.
+Hệ thống Prometheus được cấu hình 5 scrape jobs (trong monitoring/prometheus/prometheus.yml), tất cả đều ở trạng thái UP:
+1. Target tự giám sát:
+   - Job name: 'prometheus' | Target: localhost:9090 (Tự giám sát máy chủ Prometheus nội bộ).
+2. Bốn (04) Target phục vụ giám sát các tầng của hệ sinh thái HRM:
+   - Job name: 'hrm-app' | Target: hrm-app:3000 (Chỉ số thời gian phản hồi, request rate của backend Node.js).
+   - Job name: 'hrm-postgres' | Target: hrm-postgres-exporter:9187 (Chỉ số kết nối, commit/rollback transaction của PostgreSQL).
+   - Job name: 'hrm-nginx' | Target: hrm-nginx-exporter:9113 (Chỉ số HTTP requests, connections accepted/handled của Nginx).
+   - Job name: 'cadvisor' | Target: hrm-cadvisor:8080 (Chỉ số CPU, RAM, Network I/O của toàn bộ 11 container dự án HRM).
+==> TỔNG CỘNG: 5 targets (4 targets phục vụ ứng dụng & hạ tầng HRM + 1 target Prometheus self-monitoring).
 
 --------------------------------------------------------------------------------
-PHẦN 5: KỊCH BẢN DEMO BẢO VỆ DỰ ÁN TRƯỚC HỘI ĐỒNG (5 - 7 PHÚT)
+PHẦN 4: KỊCH BẢN DEMO BẢO VỆ DỰ ÁN TRƯỚC HỘI ĐỒNG (5 - 7 PHÚT)
 --------------------------------------------------------------------------------
-Sinh viên thực hiện tuần tự 7 bước sau khi thuyết trình demo:
+Thứ tự thao tác chuẩn (đã điều chỉnh đăng nhập trước khi thao tác nghiệp vụ, sử dụng thuật ngữ an toàn chính xác):
 
-Bước 1: Giới thiệu GitHub Repository & Lịch sử Cam kết (1 phút)
-- Mở trình duyệt tại: https://github.com/hoangducviet04012006-ux/DTC245200377-HRM-DevOps
-- Trình bày: "Em xin kính chào các thầy cô trong Hội đồng. Em là Hoàng Đức Việt, MSSV DTC245200377. Em xin phép báo cáo bài thi kết thúc học phần với Đề tài số 10: Hệ thống Quản lý Nhân sự (HRM). Toàn bộ mã nguồn và cấu hình hạ tầng được quản lý trên GitHub theo đúng cấu trúc 3 commit quy định của đề bài. Mã nguồn tuân thủ nguyên tắc không chứa secret, không chứa dữ liệu nhạy cảm."
+Bước 1: Giới thiệu GitHub Repository & Cấu trúc Cam kết (1 phút)
+- Mở URL: https://github.com/hoangducviet04012006-ux/DTC245200377-HRM-DevOps
+- Trình bày: "Em là Hoàng Đức Việt, MSSV DTC245200377. Em xin phép báo cáo bài thi kết thúc học phần với Đề tài số 10: Hệ thống Quản lý Nhân sự (HRM). Dự án được quản lý phiên bản trên GitHub. Mã nguồn tuân thủ nguyên tắc không chứa secret và không commit dữ liệu volume."
 
-Bước 2: Demo Ứng dụng Web HRM qua HTTPS (1 phút)
+Bước 2: Mở Cổng Nginx HTTPS & Đăng nhập Quản trị (1 phút)
 - Mở URL: https://192.168.186.128
+- Trình bày chính xác: "Hệ thống sử dụng Nginx Reverse Proxy với chứng chỉ số SSL/TLS tự ký (Self-signed certificate) có SAN cho địa chỉ IP máy chủ và localhost. Do là chứng chỉ tự ký nội bộ phục vụ môi trường thực nghiệm, trình duyệt web sẽ hiển thị cảnh báo chưa được tổ chức CA công cộng tin cậy (Untrusted Issuer); em bấm 'Nâng cao' và 'Tiếp tục truy cập' để thiết lập kết nối an toàn."
 - Thao tác:
-  1. Chỉ vào biểu tượng ổ khóa SSL/TLS chứng minh lưu lượng được mã hóa an toàn qua Nginx.
-  2. Bấm vào các tab "Nhân viên", "Phòng ban", "Chấm công": dữ liệu nạp mượt mà từ PostgreSQL.
-  3. Thử tính năng kiểm tra ràng buộc: Bấm xóa phòng ban đang có nhân viên -> hệ thống từ chối xóa hợp lệ.
+  1. Cố tình nhập sai mật khẩu $\rightarrow$ Hệ thống cảnh báo đăng nhập thất bại và Nginx ghi nhận access log mã HTTP 401.
+  2. Nhập đúng tài khoản quản trị $\rightarrow$ Đăng nhập thành công, mở khóa các quyền thao tác nghiệp vụ.
+  3. Mở F12 Application $\rightarrow$ Cookies: "Cookie phiên được cấu hình cờ HttpOnly giúp giảm đáng kể nguy cơ JavaScript phía client đọc cookie nếu phát sinh lỗ hổng XSS; thuộc tính SameSite=Lax hỗ trợ giảm thiểu rủi ro tấn công CSRF, kết hợp cờ Secure chỉ truyền qua HTTPS."
 
-Bước 3: Demo Đăng nhập Quản trị & Bảo mật CSRF (1 phút)
-- Thao tác:
-  1. Bấm "Đăng nhập", cố tình nhập sai mật khẩu -> Hệ thống thông báo lỗi và Nginx ghi nhận log 401.
-  2. Nhập đúng thông tin quản trị admin -> Đăng nhập thành công, hiển thị các nút thao tác nghiệp vụ.
-  3. Mở DevTools Application -> Cookies: Trình bày cookie sid có cờ HttpOnly, SameSite=Lax, Secure.
+Bước 3: Demo Các Chức năng Nghiệp vụ HRM (1 phút)
+- Thao tác trên giao diện sau khi đã đăng nhập:
+  1. Tab "Nhân viên": Hiển thị danh sách 8 nhân viên mẫu. Thử tìm kiếm, phân trang và xem chi tiết.
+  2. Tab "Phòng ban": Hiển thị 4 phòng ban. Bấm nút xóa phòng ban IT $\rightarrow$ Hệ thống chặn xóa và hiển thị thông báo lỗi ràng buộc "Không thể xóa phòng ban đang có nhân viên".
+  3. Tab "Chấm công": Hiển thị danh sách 8 bản ghi điểm danh mẫu hôm nay. Thử chức năng chấm công hợp lệ.
 
 Bước 4: Demo Quản trị Cơ sở Dữ liệu qua pgAdmin 4 (30 giây)
 - Mở URL: http://192.168.186.128:5050
-- Thao tác: Đăng nhập tài khoản admin pgAdmin, mở cây thư mục Server -> Databases -> hrm_db -> xem trực quan bảng employees và attendance. Trình bày đây là công cụ quản trị DB đáp ứng đúng yêu cầu của đề.
+- Thao tác: Đăng nhập pgAdmin, mở cây thư mục Server 'PostgreSQL HRM Database' $\rightarrow$ Databases $\rightarrow$ hrm_db $\rightarrow$ mở xem bảng employees và attendance. Trình bày đây là công cụ quản trị DB đáp ứng đúng yêu cầu của đề.
 
-Bước 5: Demo Nginx Gateway & Cơ chế Tự động Chuyển hướng HTTPS (30 giây)
+Bước 5: Demo Nginx Gateway & Security Headers (30 giây)
 - Thao tác:
-  1. Nhập http://192.168.186.128 -> Trình duyệt tự động chuyển hướng HTTP 301 sang https://192.168.186.128.
-  2. Mở DevTools Network xem các Security Headers: HSTS, CSP, X-Frame-Options ngăn ngừa Clickjacking.
+  1. Nhập http://192.168.186.128 $\rightarrow$ Tự động chuyển hướng HTTP 301 sang https://192.168.186.128.
+  2. Mở DevTools Network xem các HTTP Security Headers: Strict-Transport-Security (HSTS), Content-Security-Policy (CSP), X-Frame-Options (chống Clickjacking).
 
 Bước 6: Demo Hệ thống Giám sát Prometheus & Grafana Dashboard (1.5 phút)
-- Mở URL Prometheus: http://192.168.186.128:9091/targets -> Chỉ cho hội đồng thấy cả 4 target đều UP.
-- Mở URL Grafana: http://192.168.186.128:3001 -> Mở Dashboard HRM Core:
-  1. Panel Container Count: Đúng 11 container của dự án HRM, loại bỏ container của bài lab khác.
-  2. Panel CPU & Memory: Hiển thị mức tiêu thụ RAM thực tế của từng container (Grafana dùng ~265MB trên trần 512MB).
-  3. Panel Nginx Request Rate & PostgreSQL Transaction Rate: Trực quan hóa lưu lượng HTTP và số transaction DB theo thời gian thực.
+- Mở Prometheus Targets: http://192.168.186.128:9091/targets $\rightarrow$ Chỉ rõ 5 targets đều UP (4 target phục vụ HRM: hrm-app, hrm-postgres, hrm-nginx, cadvisor; và 1 target prometheus self-monitoring).
+- Mở Dashboard Grafana: http://192.168.186.128:3001
+  1. Panel Container Count: Đúng 11 container của HRM (loại trừ container lab cũ).
+  2. Panel CPU & Memory: Phân tích RAM Grafana thực tế (~265MB trên trần 512MB, working set an toàn).
+  3. Panel Nginx Request Rate & PostgreSQL Transaction Rate: Trực quan hóa dữ liệu biến động thật.
 
 Bước 7: Demo Hệ thống Log Loki & 4 Biện pháp Hardening (1.5 phút)
 - Mở Grafana Explore (Loki):
-  1. Chạy câu LogQL 1: {project="hrm", container="hrm-nginx"} xem luồng log.
-  2. Chạy câu LogQL 2: {project="hrm", container="hrm-nginx"} |= "POST /api/auth/login" |= " 401 " để thấy ngay log đăng nhập sai ở Bước 3.
+  1. Chạy câu LogQL 1: {project="hrm", container="hrm-nginx"} xem luồng log Nginx.
+  2. Chạy câu LogQL 2: {project="hrm", container="hrm-nginx"} |= "POST /api/auth/login" |= " 401 " để thấy ngay log đăng nhập sai ở Bước 2.
 - Mở Terminal SSH trình bày 4 biện pháp Hardening:
-  1. Non-root App: Chạy docker exec hrm-app id -> uid=1000(node).
+  1. Non-root App: docker exec hrm-app id $\rightarrow$ uid=1000(node).
   2. Cô lập mạng: ss -tulpn | grep 5432 chứng minh PostgreSQL không mở cổng ra host.
   3. Bí mật ngoài Git: git grep xác nhận không còn fallback default password trong mã nguồn.
-  4. Phân quyền DB tối thiểu: Thử lệnh CREATE TABLE bằng role hrm_app_user -> Bị từ chối quyền; thử truy vấn users bằng role hrm_exporter_user -> Bị từ chối quyền.
-- Kết luận: "Dạ thưa quý thầy cô, hệ thống của em đã hoàn thành đầy đủ, chính xác mọi yêu cầu của Đề số 10, chạy thực tế ổn định và đáp ứng các tiêu chuẩn bảo mật hiện đại. Em xin chân thành cảm ơn quý thầy cô!"
+  4. Phân quyền DB tối thiểu: Thử lệnh CREATE TABLE bằng hrm_app_user $\rightarrow$ Bị từ chối quyền; thử truy vấn users bằng hrm_exporter_user $\rightarrow$ Bị từ chối quyền.
 
-================================================================================
-KẾT LUẬN TOÀN BỘ KIỂM THỬ: ĐẠT YÊU CẦU ĐỀ BÀI VÀ SẴN SÀNG BẢO VỆ
-================================================================================
+--------------------------------------------------------------------------------
+PHẦN 5: DANH MỤC CÁC MỤC CẦN SINH VIÊN XÁC NHẬN & HOÀN THIỆN
+--------------------------------------------------------------------------------
+1. Kiểm chứng pgAdmin 4 qua Trình duyệt:
+   - Truy cập http://192.168.186.128:5050 trên trình duyệt máy trạm.
+   - Đăng nhập tài khoản admin pgAdmin (mật khẩu trong file .env).
+   - Mở cây thư mục Server -> Databases -> hrm_db -> Tables -> employees để chụp ảnh thực tế.
+2. Chụp và chèn 12 Ảnh Minh chứng vào Báo cáo Word:
+   - Báo cáo Word docs/BAO_CAO_MON_HOC_DTC245200377.docx hiện là BẢN NHÁP KỸ THUẬT.
+   - Sinh viên cần chụp đủ 12 ảnh theo danh mục tại Phần 4 của tài liệu này và dán vào đúng các khung [HÌNH ẢNH MINH CHỨNG ...] trong file Word trước khi in/nộp.
+   - Số trang thực tế của báo cáo sẽ do Word kết xuất sau khi chèn ảnh (dự kiến 13 - 16 trang A4, vượt yêu cầu >= 10 trang).
+3. Bổ sung Thông tin Bìa Báo cáo:
+   - Họ tên Giảng viên hướng dẫn / chấm thi.
+   - Ngày thi, ca thi, phòng thi chính thức.
+4. Xác nhận Tên Tài khoản GitHub:
+   - Hiện tại tài khoản GitHub cá nhân là: hoangducviet04012006-ux.
+   - Tên repository đã chứa đúng MSSV: DTC245200377-HRM-DevOps.
+   - Cần xác nhận lại với Giảng viên bộ môn xem có bắt buộc Tên tài khoản (username) phải đổi sang MSSV hay chỉ cần Tên repository chứa MSSV là đủ tiêu chuẩn.

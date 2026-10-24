@@ -21,8 +21,8 @@ Hệ thống Quản lý Nhân sự (HRM Core) là giải pháp quản trị doan
 5. **Hệ thống Thu thập Metrics (hrm-prometheus):** Định kỳ cào dữ liệu (scrape metrics 10s) từ web application (hrm-app), máy chủ web Nginx (hrm-nginx-exporter), cơ sở dữ liệu (hrm-postgres-exporter) và container runtime (hrm-cadvisor nội bộ).
 6. **Bảng điều khiển Giám sát (hrm-grafana):** Tự động nạp Datasource và Dashboard trực quan hóa hiệu năng hệ thống theo thời gian thực.
 7. **PostgreSQL Exporter (hrm-postgres-exporter):** Thu thập chi tiết số lượng kết nối, transaction commit/rollback, cache hit ratio từ PostgreSQL qua tài khoản giám sát đặc thù.
-8. **Hệ thống Quản lý Log Tập Trung (hrm-loki):** Lưu trữ và lập chỉ mục nhật ký hoạt động phân tán với hiệu năng cao.
-9. **Log Collector (hrm-promtail):** Tự động thu thập log từ Docker daemon và container stream để đẩy về Loki server.
+8. **Hệ thống Quản lý Log Tập Trung (hrm-loki):** Grafana Loki 3.7.7 lưu trữ và lập chỉ mục nhật ký hoạt động phân tán với hiệu năng cao.
+9. **Log Collector (hrm-promtail):** Grafana Promtail 3.6.8 tự động thu thập log từ Docker daemon và container stream để đẩy về Loki server.
 
 ---
 
@@ -134,7 +134,7 @@ docker compose ps
 - **pgAdmin 4 Web GUI:** `http://192.168.186.128:5050` (hoặc proxy: `https://192.168.186.128/pgadmin/`)
   - *Email:* `admin@hrm.com`
   - *Mật khẩu:* `<cấu hình trong file .env>`
-- **Prometheus Web UI & Targets:** `http://192.168.186.128:9091`
+- **Prometheus Web UI & Targets:** `http://192.168.186.128:9091/targets` (Gồm 5 scrape targets: 4 target cho HRM app, db, web, container + 1 target tự giám sát Prometheus)
 - **Grafana Metrics & Log Dashboard:** `http://192.168.186.128:3001`
   - *User:* `admin`
   - *Password:* `<cấu hình trong file .env>`
