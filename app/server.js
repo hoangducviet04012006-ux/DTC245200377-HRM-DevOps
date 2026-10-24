@@ -9,6 +9,7 @@ const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.APP_PORT || 3000;
 
 // Setup Prometheus Metrics Registry
@@ -92,15 +93,17 @@ const sessions = new Map();
 
 function createSession(user) {
     const token = crypto.randomBytes(32).toString('hex');
+    const csrfToken = crypto.randomBytes(24).toString('hex');
     const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
     sessions.set(token, {
         id: user.id,
         username: user.username,
         full_name: user.full_name,
         role: user.role,
+        csrfToken,
         expiresAt
     });
-    return token;
+    return { token, csrfToken };
 }
 
 function getSessionUser(req) {
@@ -115,6 +118,28 @@ function getSessionUser(req) {
     return { token, ...session };
 }
 
+function setAuthCookies(req, res, sessionToken, csrfToken) {
+    const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
+    
+    // Cookie phiên: HttpOnly, SameSite=Lax, Secure khi kết nối qua HTTPS
+    res.cookie('hrm_session', sessionToken, {
+        httpOnly: true,
+        secure: isHttps,
+        sameSite: 'lax',
+        maxAge: 24 * 60 * 60 * 1000,
+        path: '/'
+    });
+
+    // Cookie CSRF: Client-readable, SameSite=Lax, Secure khi kết nối qua HTTPS
+    res.cookie('hrm_csrf', csrfToken, {
+        httpOnly: false,
+        secure: isHttps,
+        sameSite: 'lax',
+        maxAge: 24 * 60 * 60 * 1000,
+        path: '/'
+    });
+}
+
 function requireAuth(req, res, next) {
     const user = getSessionUser(req);
     if (!user) {
@@ -122,6 +147,22 @@ function requireAuth(req, res, next) {
             error: 'Yêu cầu đăng nhập quản trị hệ thống để truy cập tài nguyên này'
         });
     }
+
+    // CSRF Protection cho các thao tác thay đổi dữ liệu (POST, PUT, PATCH, DELETE)
+    const mutatingMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
+    if (mutatingMethods.includes(req.method)) {
+        // Nếu client sử dụng Authorization: Bearer, cho phép bypass CSRF token
+        const isBearerAuth = Boolean(req.headers.authorization && req.headers.authorization.startsWith('Bearer '));
+        if (!isBearerAuth) {
+            const clientCsrf = req.headers['x-csrf-token'] || req.body?._csrf;
+            if (!clientCsrf || clientCsrf !== user.csrfToken) {
+                return res.status(403).json({
+                    error: 'Bảo vệ CSRF: Token không hợp lệ hoặc thiếu trong tiêu đề X-CSRF-Token'
+                });
+            }
+        }
+    }
+
     req.user = user;
     next();
 }
@@ -192,18 +233,14 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(401).json({ error: 'Tài khoản hoặc mật khẩu không chính xác' });
         }
 
-        const token = createSession(user);
-        res.cookie('hrm_session', token, {
-            httpOnly: true,
-            sameSite: 'lax',
-            maxAge: 24 * 60 * 60 * 1000,
-            path: '/'
-        });
+        const { token, csrfToken } = createSession(user);
+        setAuthCookies(req, res, token, csrfToken);
 
         res.json({
             success: true,
             message: 'Đăng nhập thành công',
             token,
+            csrfToken,
             user: {
                 id: user.id,
                 username: user.username,
@@ -222,6 +259,7 @@ app.post('/api/auth/logout', (req, res) => {
         sessions.delete(user.token);
     }
     res.clearCookie('hrm_session', { path: '/' });
+    res.clearCookie('hrm_csrf', { path: '/' });
     res.json({ success: true, message: 'Đã đăng xuất khỏi hệ thống' });
 });
 
@@ -232,6 +270,7 @@ app.get('/api/auth/me', (req, res) => {
     }
     res.json({
         authenticated: true,
+        csrfToken: user.csrfToken,
         user: {
             id: user.id,
             username: user.username,
@@ -240,6 +279,7 @@ app.get('/api/auth/me', (req, res) => {
         }
     });
 });
+
 
 // ==========================================
 // BUSINESS API ENDPOINTS (PROTECTED)
@@ -662,9 +702,44 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Function to provision/sync admin user from environment variables securely without logging secrets
+async function ensureAdminAccount() {
+    const adminUsername = process.env.ADMIN_USERNAME || 'admin';
+    const adminInitialPassword = process.env.ADMIN_INITIAL_PASSWORD;
+    const forceSync = process.env.ADMIN_FORCE_PASSWORD_SYNC === 'true';
+
+    if (!adminInitialPassword) {
+        return;
+    }
+
+    try {
+        const res = await pool.query('SELECT id, username FROM users WHERE username = $1', [adminUsername]);
+        if (res.rows.length === 0) {
+            const salt = bcrypt.genSaltSync(10);
+            const hash = bcrypt.hashSync(adminInitialPassword, salt);
+            await pool.query(
+                'INSERT INTO users (username, password_hash, full_name, role, is_active) VALUES ($1, $2, $3, $4, TRUE)',
+                [adminUsername, hash, 'Quản Trị Viên Hệ Thống', 'admin']
+            );
+            console.log(`[HRM Auth] Admin account initialized successfully for username: ${adminUsername}`);
+        } else if (forceSync) {
+            const salt = bcrypt.genSaltSync(10);
+            const hash = bcrypt.hashSync(adminInitialPassword, salt);
+            await pool.query(
+                'UPDATE users SET password_hash = $1 WHERE username = $2',
+                [hash, adminUsername]
+            );
+            console.log(`[HRM Auth] Admin credentials synchronized from environment for username: ${adminUsername}`);
+        }
+    } catch (err) {
+        console.error('[HRM Auth] Provisioning admin account error:', err.message);
+    }
+}
+
 // Start Server
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
     console.log(`[HRM Server] Running on http://0.0.0.0:${PORT}`);
     console.log(`[HRM Server] Health check: http://0.0.0.0:${PORT}/health`);
     console.log(`[HRM Server] Prometheus metrics: http://0.0.0.0:${PORT}/metrics`);
+    await ensureAdminAccount();
 });

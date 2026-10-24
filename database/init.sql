@@ -78,7 +78,5 @@ INSERT INTO attendance (employee_id, work_date, check_in, check_out, status, not
 (8, CURRENT_DATE, '08:00:00', '17:30:00', 'present', 'Làm việc đúng giờ')
 ON CONFLICT (employee_id, work_date) DO NOTHING;
 
--- Thêm tài khoản quản trị mặc định (Mật khẩu: Admin@123)
-INSERT INTO users (username, password_hash, full_name, role, is_active) VALUES
-('admin', '$2b$10$JsjVEY8Dot1CJIxQGQmqDeHWczytiy4VgL6QHSep0vbDkJgwREpem', 'Quản Trị Viên Hệ Thống', 'admin', TRUE)
-ON CONFLICT (username) DO NOTHING;
+-- Bảng tài khoản quản trị (mật khẩu được khởi tạo an toàn qua biến môi trường khi triển khai, không lưu mật khẩu mặc định trong Git)
+-- Users table definition is already created above with CREATE TABLE IF NOT EXISTS users.

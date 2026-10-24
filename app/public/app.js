@@ -93,23 +93,40 @@ function initDefaultDates() {
 }
 
 // ==========================================
-// AUTHENTICATION CLIENT LOGIC
+// AUTHENTICATION & CSRF CLIENT LOGIC
 // ==========================================
+let csrfToken = sessionStorage.getItem('hrm_csrf') || null;
+
+function getCsrfToken() {
+    if (csrfToken) return csrfToken;
+    const match = document.cookie.match(new RegExp('(^| )hrm_csrf=([^;]+)'));
+    if (match) return decodeURIComponent(match[2]);
+    return null;
+}
+
 async function checkAuthStatus() {
     try {
         const res = await fetch('/api/auth/me');
         if (res.ok) {
             const data = await res.json();
             currentUser = data.user;
+            if (data.csrfToken) {
+                csrfToken = data.csrfToken;
+                sessionStorage.setItem('hrm_csrf', csrfToken);
+            }
             updateAuthUI();
             loadAllData();
         } else {
             currentUser = null;
+            csrfToken = null;
+            sessionStorage.removeItem('hrm_csrf');
             updateAuthUI();
             openLoginModal();
         }
     } catch (err) {
         currentUser = null;
+        csrfToken = null;
+        sessionStorage.removeItem('hrm_csrf');
         updateAuthUI();
         console.error('Auth check error:', err);
     }
@@ -153,6 +170,10 @@ async function handleLogin(e) {
 
         if (res.ok && data.success) {
             currentUser = data.user;
+            if (data.csrfToken) {
+                csrfToken = data.csrfToken;
+                sessionStorage.setItem('hrm_csrf', csrfToken);
+            }
             closeModal('modal-login');
             updateAuthUI();
             loadAllData();
@@ -172,11 +193,13 @@ async function handleLogin(e) {
 
 async function handleLogout() {
     try {
-        await fetch('/api/auth/logout', { method: 'POST' });
+        await fetchWithAuth('/api/auth/logout', { method: 'POST' });
     } catch (err) {
         console.error('Logout error:', err);
     }
     currentUser = null;
+    csrfToken = null;
+    sessionStorage.removeItem('hrm_csrf');
     updateAuthUI();
     openLoginModal();
 }
@@ -189,11 +212,24 @@ function loadAllData() {
     checkHealth();
 }
 
-// Wrapper to handle 401 unauthorized
+// Wrapper to handle 401 unauthorized & attach CSRF tokens for mutating requests
 async function fetchWithAuth(url, options = {}) {
-    const res = await fetch(url, options);
+    const opts = { ...options };
+    opts.headers = { ...(opts.headers || {}) };
+
+    const method = (opts.method || 'GET').toUpperCase();
+    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+        const token = getCsrfToken();
+        if (token) {
+            opts.headers['X-CSRF-Token'] = token;
+        }
+    }
+
+    const res = await fetch(url, opts);
     if (res.status === 401) {
         currentUser = null;
+        csrfToken = null;
+        sessionStorage.removeItem('hrm_csrf');
         updateAuthUI();
         openLoginModal();
         throw new Error('Yêu cầu đăng nhập quản trị hệ thống');

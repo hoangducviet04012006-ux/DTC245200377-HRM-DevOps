@@ -1,0 +1,68 @@
+======================================================================
+BẮT ĐẦU KIỂM TRA PROMPT 2 BỔ SUNG & PROMPT 3 (NGINX HTTPS & SECURITY)
+Thời gian kiểm tra: 2026-10-24 16:02:16
+======================================================================
+
+[TEST 1] Kiểm tra mật khẩu mặc định cũ (Admin@123) đã bị loại bỏ hoàn toàn:
+  -> PASS: Mật khẩu mặc định cũ bị từ chối với HTTP 401.
+
+[TEST 2] Kiểm tra đăng nhập với mật khẩu mạnh riêng từ .env qua HTTPS Nginx:
+  -> PASS: Đăng nhập tài khoản quản trị thành công (HTTP 200).
+
+[TEST 3] Kiểm tra thuộc tính Cookie phiên trên kết nối HTTPS Nginx:
+  - Header set-cookie (hrm_session): set-cookie: hrm_session=[REDACTED_SESSION_TOKEN]; Max-Age=86400; Path=/; Expires=Sun, 25 Oct 2026 09:02:16 GMT; HttpOnly; Secure; SameSite=Lax
+  - Header set-cookie (hrm_csrf): set-cookie: hrm_csrf=[REDACTED_CSRF_TOKEN]; Max-Age=86400; Path=/; Expires=Sun, 25 Oct 2026 09:02:16 GMT; Secure; SameSite=Lax
+  -> PASS: Cookie hrm_session có đầy đủ thuộc tính HttpOnly, Secure, SameSite=Lax.
+  -> PASS: Nhận được CSRF token hợp lệ từ API login.
+
+[TEST 4] Kiểm tra bảo vệ CSRF khi KHÔNG gửi header X-CSRF-Token:
+  -> PASS: Thao tác mutating không có CSRF token bị chặn đúng với HTTP 403.
+
+[TEST 5] Kiểm tra bảo vệ CSRF khi gửi X-CSRF-Token SAI:
+  -> PASS: Thao tác mutating với CSRF token sai bị chặn đúng với HTTP 403.
+
+[TEST 6] Kiểm tra thao tác mutating khi gửi X-CSRF-Token ĐÚNG qua Nginx HTTPS:
+  -> PASS: Thao tác có CSRF token hợp lệ được chấp nhận và lưu DB (HTTP 201).
+  -> Dọn dẹp bản ghi test thành công.
+
+[TEST 7] Kiểm tra đăng xuất vô hiệu hóa phiên làm việc:
+  -> PASS: Đăng xuất thành công (HTTP 200).
+
+[TEST 8] Kiểm tra API từ chối Cookie phiên cũ sau khi đã đăng xuất:
+  -> PASS: API từ chối cookie cũ với HTTP 401 (Phiên cũ đã bị xóa khỏi server).
+
+[TEST 9] Kiểm tra Nginx HTTP port 80 redirect 301 sang HTTPS:
+  - Response status: 301
+  - Header: Location: https://localhost/
+  -> PASS: Port 80 redirect 301 chính xác sang HTTPS.
+
+[TEST 10] Kiểm tra các Security Headers trên kết nối HTTPS Nginx:
+  - [OK] x-frame-options: SAMEORIGIN
+  - [OK] x-content-type-options: nosniff
+  - [OK] x-xss-protection: 1; mode=block
+  - [OK] referrer-policy: strict-origin-when-cross-origin
+  - [OK] strict-transport-security: max-age=31536000; includeSubDomains
+  - [OK] content-security-policy: default-src 'self' 'unsafe-inline' 'unsafe-eval' data: https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;
+  -> PASS: Đầy đủ 6/6 Security Headers tiêu chuẩn Hardening.
+
+[TEST 11] Kiểm tra Nginx stub_status cho Exporter nội bộ trên port 80:
+  - Output: Active connections: 1 
+server accepts handled requests
+ 36 36 38 
+Reading: 0 Writing: 1 Waiting: 0 
+  -> PASS: stub_status hoạt động trên HTTP port 80 cho phép Prometheus Exporter thu thập dữ liệu.
+
+[TEST 12] Kiểm tra tính toàn vẹn dữ liệu cơ sở dữ liệu (Không reset DB):
+  - Số nhân viên active: 8 (Kỳ vọng: 8)
+  - Số phòng ban: 4 (Kỳ vọng: 4)
+  - Số tài khoản user: 1 (Kỳ vọng >= 1)
+  -> PASS: Cơ sở dữ liệu giữ nguyên toàn vẹn 8 nhân viên và 4 phòng ban.
+
+[TEST 13] Kiểm tra dịch vụ pgAdmin:
+  - pgAdmin Direct (port 5050): HTTP 200
+  - pgAdmin Reverse Proxy (/pgadmin/): HTTP 200
+  -> PASS: pgAdmin hoạt động bình thường ở tầng container và HTTP/HTTPS Reverse Proxy.
+
+======================================================================
+KẾT QUẢ: TẤT CẢ 13/13 MỤC KIỂM THỬ ĐỀU ĐẠT CHUẨN (PASS)
+======================================================================
