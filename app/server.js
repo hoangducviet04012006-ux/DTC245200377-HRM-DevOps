@@ -31,12 +31,12 @@ const httpRequestDuration = new client.Histogram({
     registers: [register]
 });
 
-// PostgreSQL Connection Pool
+// PostgreSQL Connection Pool (Least-privilege role: hrm_app_user)
 const pool = new Pool({
     host: process.env.DB_HOST || 'hrm-postgres',
     port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
-    user: process.env.POSTGRES_USER || 'hrm_user',
-    password: process.env.POSTGRES_PASSWORD || 'HrmSecureP@ss2026!',
+    user: process.env.APP_DB_USER || process.env.POSTGRES_USER || 'hrm_app_user',
+    password: process.env.APP_DB_PASSWORD || process.env.POSTGRES_PASSWORD,
     database: process.env.POSTGRES_DB || 'hrm_db',
     max: 20,
     idleTimeoutMillis: 30000,

@@ -80,3 +80,26 @@ ON CONFLICT (employee_id, work_date) DO NOTHING;
 
 -- Bảng tài khoản quản trị (mật khẩu được khởi tạo an toàn qua biến môi trường khi triển khai, không lưu mật khẩu mặc định trong Git)
 -- Users table definition is already created above with CREATE TABLE IF NOT EXISTS users.
+
+-- Phân tách quyền tối thiểu cho Ứng dụng và Exporter (Least Privilege Hardening)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'hrm_app_user') THEN
+        CREATE ROLE hrm_app_user WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+    END IF;
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'hrm_exporter_user') THEN
+        CREATE ROLE hrm_exporter_user WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+    END IF;
+END $$;
+
+GRANT CONNECT ON DATABASE hrm_db TO hrm_app_user;
+GRANT USAGE ON SCHEMA public TO hrm_app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO hrm_app_user;
+GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO hrm_app_user;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO hrm_app_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO hrm_app_user;
+
+GRANT CONNECT ON DATABASE hrm_db TO hrm_exporter_user;
+GRANT pg_monitor TO hrm_exporter_user;
+GRANT pg_read_all_stats TO hrm_exporter_user;

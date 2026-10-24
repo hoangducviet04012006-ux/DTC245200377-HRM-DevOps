@@ -1,0 +1,113 @@
+======================================================================
+BÁO CÁO THỰC HIỆN VÀ KIỂM THỬ PROMPT 6: HARDENING & PHÂN TÁCH QUYỀN DB
+Thời gian kiểm thử: 2026-10-24 16:51:37
+Sinh viên: Hoàng Đức Việt | MSSV: DTC245200377
+Đề tài 10: Hệ thống Quản lý Nhân sự (HRM)
+======================================================================
+
+I. BẢNG TỔNG HỢP 4 BIỆN PHÁP HARDENING THEO ĐỀ BÀI
++--------------------+--------------------------------+--------------------------------------+------------+
+| Biện pháp          | Cấu hình / File                | Kiểm tra thật                        | Kết quả    |
++--------------------+--------------------------------+--------------------------------------+------------+
+| 1. App chạy        | app/Dockerfile:                | docker exec hrm-app id               | PASS       |
+|    non-root        |   USER node                    | -> uid=1000(node) gid=1000(node)     | (Non-root) |
++--------------------+--------------------------------+--------------------------------------+------------+
+| 2. Cô lập mạng &   | docker-compose.yml:            | ss -tulpn | grep 5432;               | PASS       |
+|    DB không        |   hrm-backend network,         | docker port hrm-postgres             | (Cổng 5432 |
+|    publish cổng    |   không khai báo ports 5432    | -> Trống (không expose ra host)      | đóng kín)  |
++--------------------+--------------------------------+--------------------------------------+------------+
+| 3. Secret ngoài    | .env, .env.example,            | grep check toàn bộ repo không còn    | PASS       |
+|    Git & Zero      | docker-compose.yml,            | fallback hardcode password mặc định. | (Không rò  |
+|    hardcode secret | app/server.js, README.md       | .env được bảo vệ bởi .gitignore      | rỉ secret) |
++--------------------+--------------------------------+--------------------------------------+------------+
+| 4. Phân tách quyền | database/init.sql,             | App dùng hrm_app_user (NOSUPERUSER), | PASS       |
+|    PostgreSQL      | docker-compose.yml,            | Exporter dùng hrm_exporter_user      | (Least     |
+|    tối thiểu       | app/server.js (.env)           | (pg_monitor); hrm_user làm admin     | privilege) |
++--------------------+--------------------------------+--------------------------------------+------------+
+
+----------------------------------------------------------------------
+II. ĐỐI CHIẾU THỰC TẾ BỘ NHỚ GRAFANA (ĐIỂM CHỈNH SỬA PROMPT 5)
+1. Kiểm tra trạng thái Container:
+   - Status: running
+   - OOMKilled: false
+   - Số lần Restart (RestartCount): 0
+   - Thời gian bắt đầu: 2026-10-24 09:32:37 UTC
+2. Docker Stats:
+   - Bộ nhớ sử dụng: 264.8MiB / 512MiB (51.72%)
+3. Prometheus Metrics tại cùng thời điểm:
+   - container_memory_working_set_bytes (bộ nhớ làm việc thực): 265.07 MiB (khớp hoàn toàn với docker stats)
+   - container_memory_usage_bytes (bao gồm cả page cache có thể thu hồi): 398.52 MiB
+4. Đánh giá:
+   - Giới hạn RAM 512MB hiện tại đang hoạt động an toàn, tỷ lệ sử dụng thực tế ~51.7%, không có dấu hiệu nghẽn hay OOM.
+   - Chưa xác định được nhu cầu cần thiết phải tăng thêm trần RAM; giữ nguyên mức an toàn 512MB.
+
+----------------------------------------------------------------------
+III. CHI TIẾT PHÂN TÁCH QUYỀN DATABASE (POSTGRESQL LEAST PRIVILEGE)
+1. Kiểm tra Role và Quyền trước khi sửa:
+   - Chỉ có duy nhất 'hrm_user' với thuộc tính Superuser, Create DB, Create Role (vi phạm least privilege nếu runtime app sử dụng).
+2. Thiết lập 2 Role riêng biệt với quyền tối thiểu:
+   a. 'hrm_app_user' (Dành riêng cho Ứng dụng Web HRM Core):
+      - Thuộc tính: NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOREPLICATION, NOBYPASSRLS.
+      - Quyền được cấp: CONNECT trên hrm_db; USAGE trên schema public; SELECT, INSERT, UPDATE, DELETE trên tất cả bảng; USAGE, SELECT, UPDATE trên sequences.
+      - Kiểm thử quyền:
+        * Đọc dữ liệu (departments, employees): THÀNH CÔNG (code=0).
+        * Thao tác CRUD (INSERT, UPDATE, DELETE): THÀNH CÔNG (code=0).
+        * Thử quyền quản trị (CREATE TABLE): BỊ TỪ CHỐI (ERROR: permission denied for schema public).
+   b. 'hrm_exporter_user' (Dành riêng cho Prometheus PostgreSQL Exporter):
+      - Thuộc tính: NOSUPERUSER, NOCREATEDB, NOCREATEROLE.
+      - Quyền được cấp: CONNECT trên hrm_db; gán role hệ thống pg_monitor và pg_read_all_stats.
+      - Kiểm thử quyền:
+        * Đọc chỉ số hiệu năng (pg_stat_database): THÀNH CÔNG (code=0).
+        * Thử đọc dữ liệu bảng người dùng (SELECT FROM users): BỊ TỪ CHỐI (ERROR: permission denied for table users).
+   c. 'hrm_user':
+      - Giữ nguyên toàn quyền quản trị cho pgAdmin và database initialization; không thu hồi quyền quản trị của hrm_user.
+3. Kiểm tra kết nối thực tế trong pg_stat_activity:
+   - hrm-app kết nối qua user: 'hrm_app_user'
+   - hrm-postgres-exporter kết nối qua user: 'hrm_exporter_user'
+   - Không có tiến trình runtime nào chạy dưới quyền superuser 'hrm_user'.
+
+----------------------------------------------------------------------
+IV. KIỂM THỬ CHỨC NĂNG HỆ THỐNG SAU HARDENING
+1. Xác thực đăng nhập:
+   - Đăng nhập sai mật khẩu: HTTP 401 Unauthorized (Body: {"error":"Tài khoản hoặc mật khẩu không chính xác"})
+   - Đăng nhập đúng mật khẩu: HTTP 200 OK (Trả về Session Cookie HttpOnly/SameSite và CSRF Token [MASKED])
+2. CRUD Phòng ban (qua hrm_app_user):
+   - GET /api/departments -> Trả về danh sách 4 phòng ban ban đầu.
+   - POST /api/departments -> Thêm phòng ban mới 'PB-SEC' (ID=14) thành công.
+   - PUT /api/departments/14 -> Cập nhật tên thành 'Phòng An Ninh Mạng & DevSecOps' thành công.
+   - DELETE /api/departments/14 -> Xóa phòng ban test thành công (HTTP 200).
+3. CRUD Nhân viên & Chấm công (qua hrm_app_user):
+   - GET /api/employees -> Trả về danh sách 8 nhân viên active ban đầu.
+   - POST /api/employees -> Thêm nhân viên test 'NV999' (ID=13) thành công.
+   - POST /api/attendance/check-in -> Chấm công cho nhân viên test thành công (Status=present, Check-in=08:00:00).
+   - DELETE /api/employees/13 -> Dọn dẹp nhân viên test (cascade xóa chấm công) thành công.
+4. Đăng xuất:
+   - POST /api/auth/logout -> Vô hiệu hóa phiên thành công (HTTP 200).
+5. Trạng thái Exporter:
+   - Metric pg_up = 1 (hrm-postgres-exporter thu thập metrics trơn tru qua role hrm_exporter_user).
+6. Kết nối pgAdmin 4:
+   - Container hrm-pgadmin hoạt động bình thường, endpoint trả về HTTP 302 Found chuyển hướng đăng nhập.
+7. Prometheus Targets:
+   - 5/5 Targets của HRM đều ở trạng thái UP: cadvisor, hrm-app, hrm-nginx, hrm-postgres, prometheus.
+
+----------------------------------------------------------------------
+V. KIỂM THỬ TRUY VẤN LOGQL PHÂN BIỆT ĐĂNG NHẬP 200 VÀ 401
+1. Lọc sự kiện đăng nhập THẤT BẠI (HTTP 401):
+   - Query: {project="hrm", container="hrm-nginx"} |= "POST /api/auth/login" |= " 401 "
+   - Kết quả: Khớp chính xác các nỗ lực đăng nhập sai mã trạng thái 401:
+     172.20.0.1 - - "POST /api/auth/login HTTP/1.1" 401 63 "-" "Python-urllib/3.14" "-"
+2. Lọc sự kiện đăng nhập THÀNH CÔNG (HTTP 200):
+   - Query: {project="hrm", container="hrm-nginx"} |= "POST /api/auth/login" |= " 200 "
+   - Kết quả: Khớp chính xác các lượt đăng nhập thành công mã trạng thái 200:
+     172.20.0.1 - - "POST /api/auth/login HTTP/1.1" 200 289 "-" "Python-urllib/3.14" "-"
+-> PASS: Phân biệt rõ ràng giữa đăng nhập thành công và thất bại trên Nginx log.
+
+----------------------------------------------------------------------
+VI. TÍNH TOÀN VẸN DỮ LIỆU & BÀI LAB CŨ
+- Dữ liệu cơ sở dữ liệu: Giữ nguyên vẹn 8 nhân viên active và 4 phòng ban (SELECT COUNT FROM departments = 4; employees = 8).
+- Không xóa volume hrm_pgdata, không reset cơ sở dữ liệu.
+- Bài lab cũ (node-exporter, promtail, loki, prometheus, cadvisor, grafana, wordpress, mysql) duy trì hoạt động bình thường liên tục.
+
+======================================================================
+KẾT QUẢ TỔNG THỂ PROMPT 6: HOÀN THÀNH 100% YÊU CẦU ĐỀ BÀI (PASS)
+======================================================================
