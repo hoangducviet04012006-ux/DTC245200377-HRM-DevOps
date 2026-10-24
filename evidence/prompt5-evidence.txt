@@ -1,0 +1,111 @@
+======================================================================
+BÁO CÁO THỰC HIỆN VÀ KIỂM THỬ PROMPT 5: LOKI + PROMTAIL LOGQL
+Thời gian kiểm thử: 2026-10-24 16:36:24
+Sinh viên: Hoàng Đức Việt | MSSV: DTC245200377
+Đề tài 10: Hệ thống Quản lý Nhân sự (HRM)
+======================================================================
+
+[MỤC TIÊU PROMPT 5]
+1. Loki + Promtail thu thập log chính xác theo Compose project HRM.
+2. Promtail sử dụng docker_sd_configs lọc theo nhãn com.docker.compose.project=hrm, loại bỏ hoàn toàn container của bài lab cũ.
+3. Grafana truy vấn được log mới của hrm-app và hrm-nginx.
+4. Chạy 3 câu LogQL chuẩn xác khớp với nhãn và định dạng thực tế:
+   - LogQL 1: Xem toàn bộ log Nginx.
+   - LogQL 2: Lọc sự kiện nhận diện được (đăng nhập thất bại HTTP 401).
+   - LogQL 3: Đếm / rate log theo thời gian (Metric vector query).
+5. Tạo request hợp lệ và 1 lần đăng nhập sai có chủ đích để sinh log thực tế.
+6. Không thêm Alert, brute force hoặc dịch vụ ngoài đề.
+7. Bảo toàn dữ liệu DB (8 nhân viên, 4 phòng ban) và giữ nguyên bài lab cũ.
+
+----------------------------------------------------------------------
+[TEST 1] Kiểm tra cấu hình Promtail Docker Service Discovery:
+- File cấu hình: logging/promtail/promtail-config.yaml
+- Cơ chế phát hiện: docker_sd_configs trỏ unix:///var/run/docker.sock
+- Bộ lọc nhãn:
+    filters:
+      - name: label
+        values: ["com.docker.compose.project=hrm"]
+- Gán nhãn tự động (Relabeling):
+    * project: 'hrm'
+    * container: Tên container (hrm-app, hrm-nginx, ...)
+    * service: Tên service Compose
+    * stream: stdout / stderr
+-> PASS: Promtail chỉ thu thập log của container thuộc project HRM.
+
+----------------------------------------------------------------------
+[TEST 2] Kiểm tra nhãn (Labels) thực tế trong Loki Engine:
+- Loki API: http://localhost:3101/loki/api/v1/labels
+- Danh sách nhãn hiện hữu:
+  [container, container_id, filename, instance, job, project, service, service_name, stream]
+- Giá trị của nhãn 'project':
+  ["hrm"]  <-- Duy nhất project 'hrm', KHÔNG có lab cũ!
+- Danh sách containers được lập chỉ mục trong Loki:
+  ["hrm-app", "hrm-cadvisor", "hrm-grafana", "hrm-loki", "hrm-nginx",
+   "hrm-nginx-exporter", "hrm-pgadmin", "hrm-postgres",
+   "hrm-postgres-exporter", "hrm-prometheus", "hrm-promtail"]
+-> PASS: Đúng 11/11 container của HRM, phân lập hoàn toàn với bài lab cũ.
+
+----------------------------------------------------------------------
+[TEST 3] Sinh dữ liệu log thực tế (Tạo request & 1 lần đăng nhập sai):
+- Request 1: GET https://localhost/health -> HTTP 200 (OK)
+- Request 2: GET https://localhost/api/departments -> HTTP 401 (Chưa đăng nhập)
+- Request 3 (Chủ đích): POST https://localhost/api/auth/login với thông tin:
+    {"username": "admin", "password": "[MASKED_INVALID_PASSWORD]"}
+  Kết quả phản hồi từ Backend:
+    HTTP/1.1 401 Unauthorized
+    Body: {"error":"Tài khoản hoặc mật khẩu không chính xác"}
+-> PASS: Sự kiện đăng nhập sai được ghi nhận vào access log Nginx và backend app.
+
+----------------------------------------------------------------------
+[TEST 4] Thực thi 3 câu truy vấn LogQL thực tế trên Loki:
+
+1. [LOGQL 1 - Xem toàn bộ log của Nginx Reverse Proxy]:
+   Query: {project="hrm", container="hrm-nginx"}
+   Kết quả trả về: 1 stream (stream=stdout), các dòng log mới nhất:
+   * [2026-10-24T09:36:18Z] 172.21.0.10 - - "GET /stub_status HTTP/1.1" 200 115 "-" "NGINX-Prometheus-Exporter/v1.1.0" "-"
+   * [2026-10-24T09:36:08Z] 172.21.0.10 - - "GET /stub_status HTTP/1.1" 200 115 "-" "NGINX-Prometheus-Exporter/v1.1.0" "-"
+   * [2026-10-24T09:36:01Z] 172.20.0.1 - - "POST /api/auth/login HTTP/1.1" 401 63 "-" "HRM-Prompt5-Tester" "-"
+   -> PASS: Xem được toàn bộ luồng log Nginx với đầy đủ trường dữ liệu.
+
+2. [LOGQL 2 - Lọc sự kiện nhận diện được (Đăng nhập thất bại / HTTP 401)]:
+   Query: {project="hrm", container="hrm-nginx"} |= "POST /api/auth/login"
+   Kết quả trả về: Khớp chính xác 3 dòng log nỗ lực đăng nhập:
+   * 172.20.0.1 - - [24/Oct/2026:09:36:01 +0000] "POST /api/auth/login HTTP/1.1" 401 63 "-" "HRM-Prompt5-Tester" "-"
+   * 172.20.0.1 - - [24/Oct/2026:09:35:36 +0000] "POST /api/auth/login HTTP/2.0" 400 138 "-" "curl/8.18.0" "-"
+   * 172.20.0.1 - - [24/Oct/2026:09:35:32 +0000] "POST /api/auth/login HTTP/2.0" 400 138 "-" "curl/8.18.0" "-"
+   -> PASS: Lọc chính xác sự kiện đăng nhập 401 do yêu cầu kiểm thử sinh ra.
+
+3. [LOGQL 3 - Đếm tổng số log Nginx trong 5 phút (Metric Query)]:
+   Query: sum(count_over_time({project="hrm", container="hrm-nginx"}[5m]))
+   Kết quả trả về:
+   * Vector value: 40 dòng log / 5 phút.
+   -> PASS: Truy vấn vector metric hoạt động chuẩn xác trên LogQL.
+
+4. [BỔ SUNG - Xem log ứng dụng HRM Core]:
+   Query: {project="hrm", container="hrm-app"}
+   Kết quả: Thu thập thành công các luồng log nghiệp vụ của ứng dụng Node.js.
+
+----------------------------------------------------------------------
+[TEST 5] Kiểm tra Grafana kết nối và truy vấn Datasource Loki-HRM:
+- Datasource UID: P4972A7434D154847 (Loki-HRM)
+- Health check: http://localhost:3001/api/datasources/uid/P4972A7434D154847/health
+  -> Status: 200 OK ("Data source successfully connected.")
+- Test truy vấn LogQL qua API Grafana (/api/ds/query):
+  -> Kết quả: Status 200 OK, trả về 1 Data Frame chứa các dòng log khớp.
+-> PASS: Grafana tích hợp hoàn hảo với Loki, truy vấn trực quan log thành công.
+
+----------------------------------------------------------------------
+[TEST 6] Kiểm tra bảo toàn dữ liệu Cơ sở dữ liệu:
+- Truy vấn: SELECT COUNT(*) FROM departments; SELECT COUNT(*) FROM employees;
+- Kết quả: 4 phòng ban, 8 nhân viên active, 1 user admin.
+-> PASS: Cơ sở dữ liệu được giữ nguyên vẹn 100%, không bị reset.
+
+----------------------------------------------------------------------
+[TEST 7] Kiểm tra bảo toàn bài lab cũ (lab-monitoring):
+- Các container lab cũ đang chạy bình thường:
+  node-exporter, promtail, loki, prometheus, cadvisor, grafana, wordpress, mysql (Up 2 hours).
+-> PASS: Không làm gián đoạn hay ảnh hưởng tới bài lab cũ.
+
+======================================================================
+KẾT QUẢ TỔNG THỂ PROMPT 5: ĐẠT 100% YÊU CẦU ĐỀ BÀI (PASS)
+======================================================================

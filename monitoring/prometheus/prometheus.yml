@@ -24,13 +24,6 @@ scrape_configs:
         labels:
           db: 'hrm-postgres-16'
 
-  # Giám sát Host System (CPU, RAM, Disk, Network)
-  - job_name: 'node-exporter'
-    static_configs:
-      - targets: ['192.168.186.128:9100']
-        labels:
-          host: 'ubuntu-server'
-
   # Giám sát Nginx Web Server (Nginx Prometheus Exporter)
   - job_name: 'hrm-nginx'
     static_configs:
