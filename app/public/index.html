@@ -72,6 +72,15 @@
                 </div>
                 <div class="topbar-actions">
                     <span class="live-clock" id="live-clock">--:--:--</span>
+                    <div class="auth-box">
+                        <div class="auth-info" id="auth-info" style="display:none;">
+                            <span class="auth-user" id="auth-user-name">admin</span>
+                            <button class="btn btn-secondary btn-sm" onclick="handleLogout()">Đăng Xuất</button>
+                        </div>
+                        <button class="btn btn-primary btn-sm" id="btn-login-open" onclick="openLoginModal()">
+                            Đăng Nhập
+                        </button>
+                    </div>
                     <button class="btn btn-secondary" onclick="window.open('/pgadmin/', '_blank')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16"><path d="M4 7v10c0 2.21 3.58 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.58 4 8 4s8-1.79 8-4M4 7c0-2.21 3.58-4 8-4s8 1.79 8 4m0 5c0 2.21-3.58 4-8 4s-8-1.79-8-4"></path></svg>
                         <span>pgAdmin DB</span>
@@ -392,6 +401,188 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('modal-department')">Hủy Bỏ</button>
                     <button type="submit" class="btn btn-primary">Lưu Phòng Ban</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Đăng nhập Quản trị -->
+    <div id="modal-login" class="modal-backdrop">
+        <div class="modal-box" style="max-width: 440px;">
+            <div class="modal-header">
+                <h3>Đăng Nhập Quản Trị Hệ Thống</h3>
+                <button class="btn-close" onclick="closeModal('modal-login')">&times;</button>
+            </div>
+            <form id="form-login" onsubmit="handleLogin(event)">
+                <div class="modal-body">
+                    <div class="auth-notice-banner">
+                        <strong>Lưu ý bảo mật:</strong> Đăng nhập quản trị viên là biện pháp hỗ trợ bảo mật nhằm hạn chế truy cập trái phép vào các thao tác HRM, không phải yêu cầu được PDF đề thi nêu riêng.
+                    </div>
+                    <div id="login-error-alert" style="display:none; color:#dc2626; font-size:0.85rem; font-weight:600; background:#fef2f2; border:1px solid #fecaca; padding:8px 12px; border-radius:6px;"></div>
+                    <div class="form-group">
+                        <label>Tên Đăng Nhập Quản Trị *</label>
+                        <input type="text" id="login-username" name="username" required value="admin" placeholder="admin">
+                    </div>
+                    <div class="form-group">
+                        <label>Mật Khẩu *</label>
+                        <input type="password" id="login-password" name="password" required value="Admin@123" placeholder="••••••••">
+                    </div>
+                    <div style="font-size: 0.78rem; color: var(--text-secondary);">
+                        Tài khoản mặc định: <code>admin</code> | Mật khẩu: <code>Admin@123</code>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-login')">Đóng</button>
+                    <button type="submit" class="btn btn-primary">Xác Nhận Đăng Nhập</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Sửa nhân viên -->
+    <div id="modal-edit-employee" class="modal-backdrop">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Chỉnh Sửa Thông Tin Nhân Viên</h3>
+                <button class="btn-close" onclick="closeModal('modal-edit-employee')">&times;</button>
+            </div>
+            <form id="form-edit-employee" onsubmit="handleUpdateEmployee(event)">
+                <input type="hidden" name="id" id="edit-emp-id">
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Mã Nhân Viên (Không sửa)</label>
+                            <input type="text" id="edit-emp-code" readonly style="background:#f1f5f9; cursor:not-allowed;">
+                        </div>
+                        <div class="form-group">
+                            <label>Họ và Tên *</label>
+                            <input type="text" name="full_name" id="edit-emp-name" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Email *</label>
+                            <input type="email" name="email" id="edit-emp-email" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Số Điện Thoại</label>
+                            <input type="text" name="phone" id="edit-emp-phone">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Phòng Ban *</label>
+                            <select name="department_id" id="edit-emp-dept" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Chức Danh / Vị Trí *</label>
+                            <input type="text" name="position" id="edit-emp-position" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Mức Lương (VNĐ) *</label>
+                            <input type="number" name="salary" id="edit-emp-salary" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Trạng Thái *</label>
+                            <select name="status" id="edit-emp-status">
+                                <option value="active">Đang công tác</option>
+                                <option value="inactive">Đã nghỉ việc</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-edit-employee')">Hủy Bỏ</button>
+                    <button type="submit" class="btn btn-primary">Lưu Thay Đổi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Sửa phòng ban -->
+    <div id="modal-edit-department" class="modal-backdrop">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Chỉnh Sửa Phòng Ban</h3>
+                <button class="btn-close" onclick="closeModal('modal-edit-department')">&times;</button>
+            </div>
+            <form id="form-edit-department" onsubmit="handleUpdateDepartment(event)">
+                <input type="hidden" name="id" id="edit-dept-id">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Mã Phòng Ban *</label>
+                        <input type="text" name="code" id="edit-dept-code" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Tên Phòng Ban *</label>
+                        <input type="text" name="name" id="edit-dept-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Trưởng Phòng Phụ Trách</label>
+                        <input type="text" name="manager_name" id="edit-dept-manager">
+                    </div>
+                    <div class="form-group">
+                        <label>Mô Tả Chức Năng</label>
+                        <textarea name="description" id="edit-dept-desc" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-edit-department')">Hủy Bỏ</button>
+                    <button type="submit" class="btn btn-primary">Cập Nhật Phòng Ban</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Chi tiết / Ghi nhận Chấm công thủ công -->
+    <div id="modal-attendance-record" class="modal-backdrop">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Ghi Nhận / Hiệu Chỉnh Chấm Công</h3>
+                <button class="btn-close" onclick="closeModal('modal-attendance-record')">&times;</button>
+            </div>
+            <form id="form-attendance-record" onsubmit="handleSaveAttendanceRecord(event)">
+                <input type="hidden" name="employee_id" id="att-record-emp-id">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Nhân Viên</label>
+                        <input type="text" id="att-record-emp-name" readonly style="background:#f1f5f9; cursor:not-allowed;">
+                    </div>
+                    <div class="form-group">
+                        <label>Ngày Chấm Công *</label>
+                        <input type="date" name="work_date" id="att-record-date" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Giờ Vào (Check-in)</label>
+                            <input type="time" step="1" name="check_in" id="att-record-check-in">
+                        </div>
+                        <div class="form-group">
+                            <label>Giờ Ra (Check-out)</label>
+                            <input type="time" step="1" name="check_out" id="att-record-check-out">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Trạng Thái</label>
+                            <select name="status" id="att-record-status">
+                                <option value="present">Đúng giờ (present)</option>
+                                <option value="late">Đi muộn (late)</option>
+                                <option value="excused_leave">Nghỉ có phép (excused_leave)</option>
+                                <option value="unexcused_leave">Nghỉ không phép (unexcused_leave)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Ghi Chú</label>
+                            <input type="text" name="notes" id="att-record-notes" placeholder="VD: Công tác bên ngoài...">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-attendance-record')">Hủy Bỏ</button>
+                    <button type="submit" class="btn btn-primary">Lưu Bản Ghi Chấm Công</button>
                 </div>
             </form>
         </div>

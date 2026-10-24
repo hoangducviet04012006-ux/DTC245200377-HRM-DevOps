@@ -80,5 +80,5 @@ ON CONFLICT (employee_id, work_date) DO NOTHING;
 
 -- Thêm tài khoản quản trị mặc định (Mật khẩu: Admin@123)
 INSERT INTO users (username, password_hash, full_name, role, is_active) VALUES
-('admin', '$2b$10$wT0X8z5P4y2S9jH.n0yT9OuXm7jW3X7rQ6m6YlYg7v3k0oW9x6X7m', 'Quản Trị Viên Hệ Thống', 'admin', TRUE)
+('admin', '$2b$10$JsjVEY8Dot1CJIxQGQmqDeHWczytiy4VgL6QHSep0vbDkJgwREpem', 'Quản Trị Viên Hệ Thống', 'admin', TRUE)
 ON CONFLICT (username) DO NOTHING;

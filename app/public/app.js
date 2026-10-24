@@ -4,17 +4,14 @@
 let currentTab = 'dashboard';
 let employeesCache = [];
 let departmentsCache = [];
+let currentUser = null;
 let debounceTimer = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     initClock();
     initTabs();
     initDefaultDates();
-    loadDashboardStats();
-    loadDepartments();
-    loadEmployees();
-    loadAttendance();
-    checkHealth();
+    checkAuthStatus();
 });
 
 // Realtime Clock
@@ -22,7 +19,7 @@ function initClock() {
     const clockEl = document.getElementById('live-clock');
     const update = () => {
         const now = new Date();
-        clockEl.textContent = now.toLocaleTimeString('vi-VN');
+        clockEl.textContent = now.toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
     };
     update();
     setInterval(update, 1000);
@@ -77,12 +74,131 @@ function initTabs() {
 }
 
 function initDefaultDates() {
-    const today = new Date().toISOString().split('T')[0];
+    // Current date in Asia/Ho_Chi_Minh
+    const today = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).format(new Date());
+
     const attDate = document.getElementById('attendance-date');
     if (attDate) attDate.value = today;
 
     const empHire = document.getElementById('modal-emp-hire-date');
     if (empHire) empHire.value = today;
+
+    const recordDate = document.getElementById('att-record-date');
+    if (recordDate) recordDate.value = today;
+}
+
+// ==========================================
+// AUTHENTICATION CLIENT LOGIC
+// ==========================================
+async function checkAuthStatus() {
+    try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+            const data = await res.json();
+            currentUser = data.user;
+            updateAuthUI();
+            loadAllData();
+        } else {
+            currentUser = null;
+            updateAuthUI();
+            openLoginModal();
+        }
+    } catch (err) {
+        currentUser = null;
+        updateAuthUI();
+        console.error('Auth check error:', err);
+    }
+}
+
+function updateAuthUI() {
+    const authInfo = document.getElementById('auth-info');
+    const authUserName = document.getElementById('auth-user-name');
+    const btnLoginOpen = document.getElementById('btn-login-open');
+
+    if (currentUser) {
+        authInfo.style.display = 'flex';
+        authUserName.textContent = `${currentUser.full_name} (${currentUser.username})`;
+        btnLoginOpen.style.display = 'none';
+    } else {
+        authInfo.style.display = 'none';
+        btnLoginOpen.style.display = 'inline-flex';
+    }
+}
+
+function openLoginModal() {
+    const alertBox = document.getElementById('login-error-alert');
+    if (alertBox) alertBox.style.display = 'none';
+    document.getElementById('modal-login').classList.add('open');
+}
+
+async function handleLogin(e) {
+    e.preventDefault();
+    const form = e.target;
+    const username = form.username.value.trim();
+    const password = form.password.value;
+    const alertBox = document.getElementById('login-error-alert');
+
+    try {
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            currentUser = data.user;
+            closeModal('modal-login');
+            updateAuthUI();
+            loadAllData();
+        } else {
+            if (alertBox) {
+                alertBox.textContent = data.error || 'Đăng nhập không thành công';
+                alertBox.style.display = 'block';
+            }
+        }
+    } catch (err) {
+        if (alertBox) {
+            alertBox.textContent = 'Lỗi kết nối máy chủ: ' + err.message;
+            alertBox.style.display = 'block';
+        }
+    }
+}
+
+async function handleLogout() {
+    try {
+        await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (err) {
+        console.error('Logout error:', err);
+    }
+    currentUser = null;
+    updateAuthUI();
+    openLoginModal();
+}
+
+function loadAllData() {
+    loadDashboardStats();
+    loadDepartments();
+    loadEmployees();
+    loadAttendance();
+    checkHealth();
+}
+
+// Wrapper to handle 401 unauthorized
+async function fetchWithAuth(url, options = {}) {
+    const res = await fetch(url, options);
+    if (res.status === 401) {
+        currentUser = null;
+        updateAuthUI();
+        openLoginModal();
+        throw new Error('Yêu cầu đăng nhập quản trị hệ thống');
+    }
+    return res;
 }
 
 // ==========================================
@@ -90,7 +206,7 @@ function initDefaultDates() {
 // ==========================================
 async function loadDashboardStats() {
     try {
-        const res = await fetch('/api/stats');
+        const res = await fetchWithAuth('/api/stats');
         const data = await res.json();
 
         document.getElementById('stat-total-emp').textContent = data.total_employees || 0;
@@ -103,7 +219,7 @@ async function loadDashboardStats() {
         if (data.department_distribution && data.department_distribution.length > 0) {
             let html = '<div style="display:flex; flex-direction:column; gap:16px;">';
             const maxVal = Math.max(...data.department_distribution.map(d => parseInt(d.count, 10)), 1);
-            
+
             data.department_distribution.forEach(d => {
                 const pct = Math.round((parseInt(d.count, 10) / maxVal) * 100);
                 html += `
@@ -146,7 +262,7 @@ async function loadEmployees() {
         if (search) url += `search=${encodeURIComponent(search)}&`;
         if (deptId) url += `department_id=${encodeURIComponent(deptId)}&`;
 
-        const res = await fetch(url);
+        const res = await fetchWithAuth(url);
         const data = await res.json();
         employeesCache = data;
 
@@ -174,14 +290,17 @@ async function loadEmployees() {
                     <td style="font-weight:600;">${salaryFormatted}</td>
                     <td>${statusBadge}</td>
                     <td>
-                        <button class="btn btn-secondary btn-sm" onclick="deleteEmployee(${emp.id}, '${escapeHtml(emp.full_name)}')">Xóa</button>
+                        <div class="table-actions">
+                            <button class="btn btn-secondary btn-sm" onclick="openEditEmployeeModal(${emp.id})">Sửa</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteEmployee(${emp.id}, '${escapeHtml(emp.full_name)}')">Xóa</button>
+                        </div>
                     </td>
                 </tr>
             `;
         });
         tbody.innerHTML = html;
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-amber">Lỗi kết nối cơ sở dữ liệu: ${err.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-amber">${err.message}</td></tr>`;
     }
 }
 
@@ -192,14 +311,14 @@ async function handleCreateEmployee(e) {
     const body = Object.fromEntries(formData.entries());
 
     try {
-        const res = await fetch('/api/employees', {
+        const res = await fetchWithAuth('/api/employees', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
+        const result = await res.json();
         if (!res.ok) {
-            const err = await res.json();
-            alert('Lỗi: ' + (err.error || 'Không thể tạo nhân viên'));
+            alert('Lỗi: ' + (result.error || 'Không thể tạo nhân viên'));
             return;
         }
         closeModal('modal-employee');
@@ -208,22 +327,77 @@ async function handleCreateEmployee(e) {
         loadEmployees();
         loadDashboardStats();
         loadAttendance();
-        alert('Đã thêm nhân viên thành công!');
+        alert(`Đã thêm nhân viên ${result.full_name} (${result.emp_code}) thành công!`);
     } catch (err) {
-        alert('Lỗi kết nối API: ' + err.message);
+        alert('Lỗi: ' + err.message);
+    }
+}
+
+function openEditEmployeeModal(id) {
+    const emp = employeesCache.find(e => e.id === id);
+    if (!emp) return;
+
+    document.getElementById('edit-emp-id').value = emp.id;
+    document.getElementById('edit-emp-code').value = emp.emp_code;
+    document.getElementById('edit-emp-name').value = emp.full_name;
+    document.getElementById('edit-emp-email').value = emp.email;
+    document.getElementById('edit-emp-phone').value = emp.phone || '';
+    document.getElementById('edit-emp-position').value = emp.position;
+    document.getElementById('edit-emp-salary').value = emp.salary;
+    document.getElementById('edit-emp-status').value = emp.status;
+
+    // Populate dept select in edit modal
+    const deptSelect = document.getElementById('edit-emp-dept');
+    let opts = '<option value="">-- Chọn phòng ban --</option>';
+    departmentsCache.forEach(d => {
+        const selected = d.id === emp.department_id ? 'selected' : '';
+        opts += `<option value="${d.id}" ${selected}>${escapeHtml(d.name)}</option>`;
+    });
+    deptSelect.innerHTML = opts;
+
+    document.getElementById('modal-edit-employee').classList.add('open');
+}
+
+async function handleUpdateEmployee(e) {
+    e.preventDefault();
+    const form = e.target;
+    const id = document.getElementById('edit-emp-id').value;
+    const formData = new FormData(form);
+    const body = Object.fromEntries(formData.entries());
+
+    try {
+        const res = await fetchWithAuth(`/api/employees/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const result = await res.json();
+        if (!res.ok) {
+            alert('Lỗi: ' + (result.error || 'Không thể cập nhật nhân viên'));
+            return;
+        }
+        closeModal('modal-edit-employee');
+        loadEmployees();
+        loadDashboardStats();
+        loadAttendance();
+        alert('Cập nhật thông tin nhân viên thành công!');
+    } catch (err) {
+        alert('Lỗi: ' + err.message);
     }
 }
 
 async function deleteEmployee(id, name) {
     if (!confirm(`Bạn có chắc chắn muốn xóa nhân viên "${name}" khỏi cơ sở dữ liệu?`)) return;
     try {
-        const res = await fetch(`/api/employees/${id}`, { method: 'DELETE' });
+        const res = await fetchWithAuth(`/api/employees/${id}`, { method: 'DELETE' });
+        const data = await res.json();
         if (res.ok) {
             loadEmployees();
             loadDashboardStats();
             loadAttendance();
+            alert(data.message || 'Đã xóa nhân viên thành công');
         } else {
-            alert('Lỗi khi xóa nhân viên');
+            alert('Lỗi: ' + (data.error || 'Không thể xóa nhân viên'));
         }
     } catch (err) {
         alert('Lỗi: ' + err.message);
@@ -239,7 +413,7 @@ async function loadDepartments() {
     const modalSelect = document.getElementById('modal-emp-dept-select');
 
     try {
-        const res = await fetch('/api/departments');
+        const res = await fetchWithAuth('/api/departments');
         const data = await res.json();
         departmentsCache = data;
 
@@ -270,14 +444,17 @@ async function loadDepartments() {
                     <td><span class="badge badge-success">${d.employee_count} thành viên</span></td>
                     <td style="color:var(--text-secondary);">${escapeHtml(d.description || '-')}</td>
                     <td>
-                        <button class="btn btn-secondary btn-sm" onclick="deleteDepartment(${d.id}, '${escapeHtml(d.name)}')">Xóa</button>
+                        <div class="table-actions">
+                            <button class="btn btn-secondary btn-sm" onclick="openEditDepartmentModal(${d.id})">Sửa</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteDepartment(${d.id}, '${escapeHtml(d.name)}')">Xóa</button>
+                        </div>
                     </td>
                 </tr>
             `;
         });
         tbody.innerHTML = html;
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-amber">Lỗi kết nối cơ sở dữ liệu: ${err.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-amber">${err.message}</td></tr>`;
     }
 }
 
@@ -288,21 +465,61 @@ async function handleCreateDepartment(e) {
     const body = Object.fromEntries(formData.entries());
 
     try {
-        const res = await fetch('/api/departments', {
+        const res = await fetchWithAuth('/api/departments', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
+        const result = await res.json();
         if (!res.ok) {
-            const err = await res.json();
-            alert('Lỗi: ' + (err.error || 'Không thể tạo phòng ban'));
+            alert('Lỗi: ' + (result.error || 'Không thể tạo phòng ban'));
             return;
         }
         closeModal('modal-department');
         form.reset();
         loadDepartments();
         loadDashboardStats();
-        alert('Đã thêm phòng ban thành công!');
+        alert(`Đã thêm phòng ban "${result.name}" (${result.code}) thành công!`);
+    } catch (err) {
+        alert('Lỗi: ' + err.message);
+    }
+}
+
+function openEditDepartmentModal(id) {
+    const dept = departmentsCache.find(d => d.id === id);
+    if (!dept) return;
+
+    document.getElementById('edit-dept-id').value = dept.id;
+    document.getElementById('edit-dept-code').value = dept.code;
+    document.getElementById('edit-dept-name').value = dept.name;
+    document.getElementById('edit-dept-manager').value = dept.manager_name || '';
+    document.getElementById('edit-dept-desc').value = dept.description || '';
+
+    document.getElementById('modal-edit-department').classList.add('open');
+}
+
+async function handleUpdateDepartment(e) {
+    e.preventDefault();
+    const form = e.target;
+    const id = document.getElementById('edit-dept-id').value;
+    const formData = new FormData(form);
+    const body = Object.fromEntries(formData.entries());
+
+    try {
+        const res = await fetchWithAuth(`/api/departments/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const result = await res.json();
+        if (!res.ok) {
+            alert('Lỗi: ' + (result.error || 'Không thể cập nhật phòng ban'));
+            return;
+        }
+        closeModal('modal-edit-department');
+        loadDepartments();
+        loadDashboardStats();
+        alert('Cập nhật phòng ban thành công!');
     } catch (err) {
         alert('Lỗi: ' + err.message);
     }
@@ -311,13 +528,16 @@ async function handleCreateDepartment(e) {
 async function deleteDepartment(id, name) {
     if (!confirm(`Bạn có chắc muốn xóa phòng ban "${name}"?`)) return;
     try {
-        const res = await fetch(`/api/departments/${id}`, { method: 'DELETE' });
+        const res = await fetchWithAuth(`/api/departments/${id}`, { method: 'DELETE' });
+        const data = await res.json();
         if (res.ok) {
             loadDepartments();
             loadDashboardStats();
             loadEmployees();
+            alert(data.message || 'Đã xóa phòng ban thành công');
         } else {
-            alert('Không thể xóa phòng ban đang có nhân viên.');
+            // Hiển thị thông báo ràng buộc ngăn xóa phòng ban còn nhân viên
+            alert('Lỗi ràng buộc dữ liệu: ' + (data.error || 'Không thể xóa phòng ban đang có nhân viên'));
         }
     } catch (err) {
         alert('Lỗi: ' + err.message);
@@ -329,11 +549,17 @@ async function deleteDepartment(id, name) {
 // ==========================================
 async function loadAttendance() {
     const dateInput = document.getElementById('attendance-date');
-    const date = dateInput ? dateInput.value : new Date().toISOString().split('T')[0];
+    const date = dateInput ? dateInput.value : new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).format(new Date());
+
     const tbody = document.getElementById('attendance-table-body');
 
     try {
-        const res = await fetch(`/api/attendance?date=${encodeURIComponent(date)}`);
+        const res = await fetchWithAuth(`/api/attendance?date=${encodeURIComponent(date)}`);
         const data = await res.json();
 
         if (!data || data.length === 0) {
@@ -347,6 +573,7 @@ async function loadAttendance() {
             if (item.status === 'present') statusBadge = '<span class="badge badge-success">✓ Đúng giờ</span>';
             else if (item.status === 'late') statusBadge = '<span class="badge badge-warning">⚠️ Đi muộn</span>';
             else if (item.status === 'excused_leave') statusBadge = '<span class="badge badge-notice">Nghỉ có phép</span>';
+            else if (item.status === 'unexcused_leave') statusBadge = '<span class="badge badge-danger">Nghỉ không phép</span>';
 
             const checkInVal = item.check_in ? item.check_in.substring(0, 5) : '--:--';
             const checkOutVal = item.check_out ? item.check_out.substring(0, 5) : '--:--';
@@ -360,48 +587,101 @@ async function loadAttendance() {
                     <td style="font-family:monospace; font-weight:700;">${checkOutVal}</td>
                     <td>${statusBadge}</td>
                     <td>
-                        <button class="btn btn-secondary btn-sm" onclick="quickCheckIn(${item.employee_id})">Vào</button>
-                        <button class="btn btn-secondary btn-sm" onclick="quickCheckOut(${item.employee_id})">Ra</button>
+                        <div class="table-actions">
+                            <button class="btn btn-secondary btn-sm" onclick="quickCheckIn(${item.employee_id})">Vào</button>
+                            <button class="btn btn-secondary btn-sm" onclick="quickCheckOut(${item.employee_id})">Ra</button>
+                            <button class="btn btn-secondary btn-sm" onclick="openAttendanceRecordModal(${item.employee_id}, '${escapeHtml(item.full_name)}', '${escapeHtml(item.work_date)}', '${item.check_in || ''}', '${item.check_out || ''}', '${item.status || 'present'}', '${escapeHtml(item.notes || '')}')">Chi Tiết</button>
+                        </div>
                     </td>
                 </tr>
             `;
         });
         tbody.innerHTML = html;
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-amber">Lỗi: ${err.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-amber">${err.message}</td></tr>`;
     }
 }
 
 async function quickCheckIn(empId) {
     const date = document.getElementById('attendance-date')?.value;
     try {
-        const res = await fetch('/api/attendance/check-in', {
+        const res = await fetchWithAuth('/api/attendance/check-in', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ employee_id: empId, work_date: date })
         });
+        const data = await res.json();
         if (res.ok) {
             loadAttendance();
             loadDashboardStats();
+        } else {
+            alert('Lỗi chấm công vào: ' + (data.error || 'Không thể chấm công'));
         }
     } catch (err) {
-        alert('Lỗi check-in: ' + err.message);
+        alert('Lỗi: ' + err.message);
     }
 }
 
 async function quickCheckOut(empId) {
     const date = document.getElementById('attendance-date')?.value;
     try {
-        const res = await fetch('/api/attendance/check-out', {
+        const res = await fetchWithAuth('/api/attendance/check-out', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ employee_id: empId, work_date: date })
         });
+        const data = await res.json();
         if (res.ok) {
             loadAttendance();
+        } else {
+            alert('Lỗi chấm công ra: ' + (data.error || 'Không thể chấm công'));
         }
     } catch (err) {
-        alert('Lỗi check-out: ' + err.message);
+        alert('Lỗi: ' + err.message);
+    }
+}
+
+function openAttendanceRecordModal(empId, empName, workDate, checkIn, checkOut, status, notes) {
+    document.getElementById('att-record-emp-id').value = empId;
+    document.getElementById('att-record-emp-name').value = empName;
+    document.getElementById('att-record-date').value = workDate || document.getElementById('attendance-date')?.value;
+    document.getElementById('att-record-check-in').value = checkIn ? checkIn.substring(0, 8) : '';
+    document.getElementById('att-record-check-out').value = checkOut ? checkOut.substring(0, 8) : '';
+    document.getElementById('att-record-status').value = status || 'present';
+    document.getElementById('att-record-notes').value = notes || '';
+
+    document.getElementById('modal-attendance-record').classList.add('open');
+}
+
+async function handleSaveAttendanceRecord(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const body = Object.fromEntries(formData.entries());
+
+    // Validate check_out >= check_in
+    if (body.check_in && body.check_out && body.check_out < body.check_in) {
+        alert(`Lỗi nghiệp vụ: Giờ ra (${body.check_out}) không được trước giờ vào (${body.check_in})!`);
+        return;
+    }
+
+    try {
+        const res = await fetchWithAuth('/api/attendance/record', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            alert('Lỗi: ' + (data.error || 'Không thể lưu bản ghi chấm công'));
+            return;
+        }
+        closeModal('modal-attendance-record');
+        loadAttendance();
+        loadDashboardStats();
+        alert('Đã lưu bản ghi chấm công thành công!');
+    } catch (err) {
+        alert('Lỗi: ' + err.message);
     }
 }
 

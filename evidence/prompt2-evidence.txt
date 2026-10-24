@@ -1,0 +1,58 @@
+=====================================================================
+TEST SUITE: PROMPT 2 - HRM APP, AUTHENTICATION & BUSINESS LOGIC
+=====================================================================
+
+--- 1. Healthcheck & Metrics (Cong khai cho Docker & Prometheus) ---
+{"status":"UP","service":"HRM Core System","student_id":"DTC245200377","database":"CONNECTED","timestamp":"2026-10-24T08:42:46.660Z","uptime_seconds":40.964917746}
+# HELP hrm_process_cpu_user_seconds_total Total user CPU time spent in seconds.
+# TYPE hrm_process_cpu_user_seconds_total counter
+hrm_process_cpu_user_seconds_total 0.260405
+
+
+--- 2. Kiem tra chan truy cap khi CHUA dang nhap (HTTP 401) ---
+GET /api/employees: HTTP 401
+GET /api/departments: HTTP 401
+GET /api/attendance: HTTP 401
+
+--- 3. Kiem tra dang nhap SAI mat khau (Chan dang nhap loi) ---
+Phan hoi dang nhap sai: {"error":"Tài khoản hoặc mật khẩu không chính xác"}
+
+--- 4. Kiem tra dang nhap DUNG mat khau (Cap session cookie) ---
+Phan hoi dang nhap dung: {"success":true,"message":"Đăng nhập thành công","token":"[MASKED_SESSION_TOKEN]","user":{"id":1,"username":"admin","full_name":"Quản Trị Viên Hệ Thống","role":"admin"}}
+[PASS] Da cap thanh cong session cookie hrm_session
+
+--- 5. Kiem tra truy van du lieu SAU KHI DANG NHAP ---
+{"authenticated":true,"user":{"id":1,"username":"admin","full_name":"Quản Trị Viên Hệ Thống","role":"admin"}}
+Stats: {"total_employees":8,"total_departments":4,"present_today":0,"late_today":1,"leave_today":0,"department_distribution":[{"name":"Phòng Công Nghệ Thông Tin","count":"3"},{"name":"Phòng Tài Chính Kế Toán","count":"2"},{"name":"Phòng Hành Chính Nhân Sự","count":"2"},{"name":"Phòng Kinh Doanh & Tiếp Thị","count":"1"}]}
+
+--- 6. Kiem tra Phong ban: Trung ma & Chan xoa khi con nhan vien ---
+Thu them trung ma PB-IT: {"error":"Mã phòng ban \"PB-IT\" đã tồn tại trong hệ thống"}
+Thu xoa phong ban ID 1 con nhan vien: {"error":"Không thể xóa phòng ban đang có 3 nhân viên. Vui lòng chuyển nhân viên sang phòng ban khác trước."}
+Tao phong ban tam: {"id":7,"code":"PB-TEST","name":"Phong Test Tam","manager_name":"Tester","description":"Tam thoi","created_at":"2026-10-24T08:42:46.977Z"}
+Sua phong ban tam: {"id":7,"code":"PB-TEST2","name":"Phong Test Da Sua","manager_name":"Tester 2","description":"Da sua","created_at":"2026-10-24T08:42:46.977Z"}
+Xoa phong ban tam thanh cong: {"success":true,"message":"Đã xóa phòng ban thành công"}
+
+--- 7. Kiem tra Nhan vien: Trung ma NV & Trung Email ---
+Thu them trung ma NV001: {"error":"Mã nhân viên \"NV001\" đã tồn tại trong hệ thống"}
+Thu them trung email: {"error":"Email \"viet.hoang@hrm.local\" đã được sử dụng bởi nhân viên khác"}
+Tao nhan vien tam: {"id":11,"emp_code":"NV-TMP","full_name":"Nhan Vien Tam","email":"tmp@hrm.local","phone":"","department_id":1,"position":"Tester","salary":"10000000.00","hire_date":"2026-10-24T00:00:00.000Z","status":"active","created_at":"2026-10-24T08:42:47.054Z"}
+Xoa nhan vien tam thanh cong: {"success":true,"message":"Đã xóa nhân viên và bản ghi chấm công liên quan thành công"}
+
+--- 8. Kiem tra Cham cong: Gio ra truoc gio vao & Trung ngay ---
+Thu check-in trung lap NV 1: {"error":"Nhân viên đã được chấm công vào lúc 15:40:45 ngày 2026-10-24 (không thể chấm công vào trùng lặp)"}
+Thu check-out gio ra truoc gio vao: {"error":"Giờ ra (07:00:00) không được trước giờ vào (15:40:45)"}
+Thu luu ban ghi gio ra truoc gio vao qua /api/attendance/record: {"error":"Giờ ra (06:30:00) không được trước giờ vào (08:00:00)"}
+
+--- 9. Xac nhan so luong ban ghi trong PostgreSQL sau kiem thu ---
+ total_departments | total_employees | total_attendance | total_users 
+-------------------+-----------------+------------------+-------------
+                 4 |               8 |                9 |           1
+(1 row)
+
+
+--- 10. Kiem tra ket noi tu container pgAdmin toi PostgreSQL ---
+So nhan vien active kiem tra tu pgAdmin container: 8
+
+=====================================================================
+PROMPT 2 TEST SUITE COMPLETED SUCCESSFULLY
+=====================================================================

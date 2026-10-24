@@ -1,0 +1,93 @@
+=== BANG CHUNG KIEM TRA COMMIT 3: LOKI + PROMTAIL + HARDENING ===
+Fri Oct 23 03:57:18 PM +07 2026
+
+1. Trang thai toan bo 9 dich vu Docker Compose:
+NAME                    IMAGE                                          COMMAND                  SERVICE                 CREATED         STATUS                   PORTS
+hrm-app                 hrm-app:1.0                                    "docker-entrypoint.s…"   hrm-app                 3 minutes ago   Up 2 minutes (healthy)   3000/tcp
+hrm-grafana             grafana/grafana:latest                         "/run.sh"                hrm-grafana             3 minutes ago   Up 3 minutes             0.0.0.0:3001->3000/tcp, [::]:3001->3000/tcp
+hrm-loki                grafana/loki:latest                            "/usr/bin/loki -conf…"   hrm-loki                3 minutes ago   Up 3 minutes             0.0.0.0:3101->3100/tcp, [::]:3101->3100/tcp
+hrm-nginx               nginx:1.25-alpine                              "/docker-entrypoint.…"   hrm-nginx               3 minutes ago   Up 2 minutes             0.0.0.0:80->80/tcp, [::]:80->80/tcp, 0.0.0.0:443->443/tcp, [::]:443->443/tcp
+hrm-pgadmin             dpage/pgadmin4:8.11                            "/entrypoint.sh"         hrm-pgadmin             3 minutes ago   Up 2 minutes             443/tcp, 0.0.0.0:5050->80/tcp, [::]:5050->80/tcp
+hrm-postgres            postgres:16-alpine                             "docker-entrypoint.s…"   hrm-postgres            3 minutes ago   Up 3 minutes (healthy)   5432/tcp
+hrm-postgres-exporter   prometheuscommunity/postgres-exporter:latest   "/bin/postgres_expor…"   hrm-postgres-exporter   7 minutes ago   Up 6 minutes             9187/tcp
+hrm-prometheus          prom/prometheus:latest                         "/bin/prometheus --c…"   hrm-prometheus          3 minutes ago   Up 3 minutes             0.0.0.0:9091->9090/tcp, [::]:9091->9090/tcp
+hrm-promtail            grafana/promtail:latest                        "/usr/bin/promtail -…"   hrm-promtail            3 minutes ago   Up 3 minutes             
+
+2. Trang thai san sang cua Loki Engine:
+ready
+
+3. Truy van LogQL 1 (Stream query):
+{
+    "status": "success",
+    "data": {
+        "resultType": "streams",
+        "result": [
+            {
+                "stream": {
+                    "container_id": "77b773c98bc7d550f2f56e0e9bf332a60400962d8bc40bd632c0a78c695eae69",
+                    "detected_level": "info",
+                    "filename": "/var/lib/docker/containers/77b773c98bc7d550f2f56e0e9bf332a60400962d8bc40bd632c0a78c695eae69/77b773c98bc7d550f2f56e0e9bf332a60400962d8bc40bd632c0a78c695eae69-json.log",
+                    "job": "docker-containers",
+                    "service_name": "docker-containers",
+                    "stream": "stderr"
+                },
+                "values": [
+                    [
+                        "1792745663128580250",
+                        "{\"log\":\"level=info ts=2026-10-23T08:54:18.511322435Z caller=tables_manager.go:289 msg=\\\"finished compacting table\\\" table-name=index_20713\\n\",\"stream\":\"stderr\",\"time\":\"2026-10-23T08:54:18.535136662Z\"}"
+                    ],
+                    [
+                        "1792745663128578000",
+                        "{\"log\":\"level=info ts=2026-10-23T08:54:18.511195181Z caller=table.go:145 table-name=index_20713 msg=\\\"listed files\\\" count=0\\n\",\"stream\":\"stderr\",\"time\":\"2026-10-23T08:54:18.535134178Z\"}"
+                    ],
+                    [
+                        "1792745663128574364",
+                        "{\"log\":\"level=info ts=2026-10-23T08:54:18.511002962Z caller=tables_manager.go:284 msg=\\\"compacting table\\\" table-name=index_20713\\n\",\"stream\":\"stderr\",\"time\":\"2026-10-23T08:54:18.535110445Z\"}"
+                    ],
+                    [
+                        "1792745663128431327",
+                        "{\"log\":\"level=info ts=2026-10-23T08:54:13.272645977Z caller=checkpoint.go:599 msg=\\\"atomic checkpoint finished\\\" old=/loki/wal/checkpoint.000059.tmp new=/loki/wal/checkpoint.000059\\n\",\"stream\":\"stderr\",\"time\":\"2026-10-23T08:54:13.334717079Z\"}"
+
+4. Truy van LogQL 2 (Filter query hrm):
+{
+    "status": "success",
+    "data": {
+        "resultType": "streams",
+        "result": [
+            {
+                "stream": {
+                    "container_id": "3a88fa61b983cc887dbd812a0e305824cf1aaa971f901e1100efab96534de66e",
+                    "detected_level": "info",
+                    "filename": "/var/lib/docker/containers/3a88fa61b983cc887dbd812a0e305824cf1aaa971f901e1100efab96534de66e/3a88fa61b983cc887dbd812a0e305824cf1aaa971f901e1100efab96534de66e-json.log",
+                    "job": "docker-containers",
+                    "service_name": "docker-containers",
+                    "stream": "stderr"
+                },
+                "values": [
+                    [
+                        "1792745662947440890",
+                        "{\"log\":\"time=2026-10-23T08:50:33.642Z level=INFO source=postgres_exporter.go:537 msg=\\\"Semantic version changed\\\" server=hrm-postgres:5432 from=0.0.0 to=16.15.0\\n\",\"stream\":\"stderr\",\"time\":\"2026-10-23T08:50:33.643072578Z\"}"
+                    ],
+                    [
+                        "1792745662947072169",
+                        "{\"log\":\"time=2026-10-23T08:50:33.635Z level=INFO source=server.go:96 msg=\\\"Established new database connection\\\" fingerprint=hrm-postgres:5432\\n\",\"stream\":\"stderr\",\"time\":\"2026-10-23T08:50:33.637565399Z\"}"
+                    ]
+                ]
+            }
+        ],
+        "stats": {
+            "summary": {
+                "bytesProcessedPerSecond": 233039816,
+                "linesProcessedPerSecond": 807234,
+
+5. Truy van LogQL 3 (Metric Query rate):
+{"status":"success","data":{"resultType":"vector","result":[],"stats":{"summary":{"bytesProcessedPerSecond":0,"linesProcessedPerSecond":0,"totalBytesProcessed":0,"totalLinesProcessed":0,"execTime":0.002892233,"queueTime":0.000048637,"subqueries":0,"totalEntriesReturned":0,"splits":0,"shards":1,"totalPostFilterLines":0,"totalStructuredMetadataBytesProcessed":0},"querier":{"store":{"totalChunksRef":0,"totalChunksDownloaded":0,"chunksDownloadTime":0,"queryReferencedStructuredMetadata":false,"queryUsedV2Engine":false,"chunk":{"headChunkBytes":0,"headChunkLines":0,"decompressedBytes":0,"decompressedLines":0,"compressedBytes":0,"totalDuplicates":0,"postFilterLines":0,"headChunkStructuredMetadataBytes":0,"decompressedStructuredMetadataBytes":0},"chunkRefsFetchTime":0,"congestionControlLatency":0,"pipelineWrapperFilteredLines":0,"dataobj":{"prePredicateDecompressedRows":0,"prePredicateDecompressedBytes":0,"prePredicateDecompressedStructuredMetadataBytes":0,"postPredicateRows":0,"postPredicateDecompressedBytes":0,"postPredicateStructuredMetadataBytes":0,"postFilterRows":0,"pagesScanned":0,"pagesDownloaded":0,"pagesDownloadedBytes":0,"pageBatches":0,"totalRowsAvailable":0,"totalPageDownloadTime":0}},"querierExecTime":0.002174346},"ingester":{"totalReached":1,"totalChunksMatched":0,"totalBatches":1,"totalLinesSent":0,"store":{"totalChunksRef":0,"totalChunksDownloaded":0,"chunksDownloadTime":0,"queryReferencedStructuredMetadata":false,"queryUsedV2Engine":false,"chunk":{"headChunkBytes":0,"headChunkLines":0,"decompressedBytes":0,"decompressedLines":0,"compressedBytes":0,"totalDuplicates":0,"postFilterLines":0,"headChunkStructuredMetadataBytes":0,"decompressedStructuredMetadataBytes":0},"chunkRefsFetchTime":72879,"congestionControlLatency":0,"pipelineWrapperFilteredLines":0,"dataobj":{"prePredicateDecompressedRows":0,"prePredicateDecompressedBytes":0,"prePredicateDecompressedStructuredMetadataBytes":0,"postPredicateRows":0,"postPredicateDecompressedBytes":0,"postPredicateStructuredMetadataBytes":0,"postFilterRows":0,"pagesScanned":0,"pagesDownloaded":0,"pagesDownloadedBytes":0,"pageBatches":0,"totalRowsAvailable":0,"totalPageDownloadTime":0}},"recvWaitTime":0.000338783},"cache":{"chunk":{"entriesFound":0,"entriesRequested":0,"entriesStored":0,"bytesReceived":0,"bytesSent":0,"requests":0,"downloadTime":0,"queryLengthServed":0},"index":{"entriesFound":0,"entriesRequested":0,"entriesStored":0,"bytesReceived":0,"bytesSent":0,"requests":0,"downloadTime":0,"queryLengthServed":0},"result":{"entriesFound":0,"entriesRequested":0,"entriesStored":0,"bytesReceived":0,"bytesSent":0,"requests":0,"downloadTime":0,"queryLengthServed":0},"statsResult":{"entriesFound":0,"entriesRequested":0,"entriesStored":0,"bytesReceived":0,"bytesSent":0,"requests":0,"downloadTime":0,"queryLengthServed":0},"volumeResult":{"entriesFound":0,"entriesRequested":0,"entriesStored":0,"bytesReceived":0,"bytesSent":0,"requests":0,"downloadTime":0,"queryLengthServed":0},"seriesResult":{"entriesFound":0,"entriesRequested":0,"entriesStored":0,"bytesReceived":0,"bytesSent":0,"requests":0,"downloadTime":0,"queryLengthServed":0},"labelResult":{"entriesFound":0,"entriesRequested":0,"entriesStored":0,"bytesReceived":0,"bytesSent":0,"requests":0,"downloadTime":0,"queryLengthServed":0},"instantMetricResult":{"entriesFound":0,"entriesRequested":0,"entriesStored":0,"bytesReceived":0,"bytesSent":0,"requests":0,"downloadTime":0,"queryLengthServed":0}},"index":{"totalChunks":0,"postFilterChunks":0,"shardsDuration":0,"usedBloomFilters":false,"totalStreams":0,"chunkRefsLookupTime":0,"bloomFilterTime":0}}}}
+6. Datasources trong Grafana (Prometheus & Loki):
+[{"id":2,"uid":"P4972A7434D154847","orgId":1,"name":"Loki-HRM","type":"loki","typeName":"Loki","typeLogoUrl":"public/plugins/loki/img/loki_icon.svg","access":"proxy","url":"http://hrm-loki:3100","user":"","database":"","basicAuth":false,"isDefault":false,"jsonData":{},"readOnly":false},{"id":1,"uid":"PDF46E69C9AEEC313","orgId":1,"name":"Prometheus-HRM","type":"prometheus","typeName":"Prometheus","typeLogoUrl":"public/plugins/prometheus/img/prometheus_logo.svg","access":"proxy","url":"http://hrm-prometheus:9090","user":"","database":"","basicAuth":false,"isDefault":true,"jsonData":{},"readOnly":false}]
+7. Kiem tra Hardening: Non-root user ben trong container hrm-app:
+uid=1000(node) gid=1000(node) groups=1000(node)
+
+8. Kiem tra Hardening: Gioi han tai nguyen Memory Limits:
+Container: /hrm-app | Memory: 402653184 bytes
+Container: /hrm-postgres | Memory: 536870912 bytes
+Container: /hrm-nginx | Memory: 134217728 bytes

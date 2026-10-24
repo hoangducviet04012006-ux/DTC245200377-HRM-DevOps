@@ -651,3 +651,56 @@ input:focus, select:focus, textarea:focus {
     from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* AUTH & ACTION ENHANCEMENTS */
+.auth-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.auth-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f1f5f9;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+}
+
+.auth-user {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+}
+
+.btn-danger {
+    background-color: #ef4444;
+    color: #ffffff;
+}
+
+.btn-danger:hover {
+    background-color: #dc2626;
+}
+
+.auth-notice-banner {
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    color: #3730a3;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    line-height: 1.4;
+}
+
+.table-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}

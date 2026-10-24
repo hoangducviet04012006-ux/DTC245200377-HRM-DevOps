@@ -1,0 +1,64 @@
+=== BẰNG CHỨNG KIỂM TRA COMMIT 1: WEB + DB + PGADMIN + NGINX HTTPS ===
+Fri Oct 23 03:47:41 PM +07 2026
+
+1. Trạng thái Docker Compose:
+
+2. Chuyển hướng HTTP sang HTTPS:
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Date: Fri, 23 Oct 2026 08:47:41 GMT
+Content-Type: text/html
+Content-Length: 162
+Connection: keep-alive
+Location: https://localhost/
+
+
+3. Phản hồi HTTPS và Security Headers:
+HTTP/2 200 
+server: nginx
+date: Fri, 23 Oct 2026 08:47:41 GMT
+content-type: text/html; charset=UTF-8
+content-length: 23162
+vary: Accept-Encoding
+x-powered-by: Express
+access-control-allow-origin: *
+accept-ranges: bytes
+cache-control: public, max-age=0
+last-modified: Fri, 23 Oct 2026 08:43:24 GMT
+etag: W/"5a7a-1a167eddbe0"
+x-frame-options: SAMEORIGIN
+x-content-type-options: nosniff
+x-xss-protection: 1; mode=block
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=31536000; includeSubDomains
+content-security-policy: default-src 'self' 'unsafe-inline' 'unsafe-eval' data: https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;
+
+
+4. Kiểm tra API Healthcheck:
+{"status":"UP","service":"HRM Core System","student_id":"DTC245200377","database":"CONNECTED","timestamp":"2026-10-23T08:47:41.916Z","uptime_seconds":197.477937028}
+5. Kiểm tra API Doanh nghiệp (Stats):
+{"total_employees":8,"total_departments":4,"present_today":6,"late_today":1,"leave_today":1,"department_distribution":[{"name":"Phòng Công Nghệ Thông Tin","count":"3"},{"name":"Phòng Tài Chính Kế Toán","count":"2"},{"name":"Phòng Hành Chính Nhân Sự","count":"2"},{"name":"Phòng Kinh Doanh & Tiếp Thị","count":"1"}]}
+6. Kiểm tra pgAdmin qua Reverse Proxy:
+HTTP/2 302 
+server: nginx
+date: Fri, 23 Oct 2026 08:47:41 GMT
+content-type: text/html; charset=utf-8
+content-length: 221
+location: /pgadmin/browser/
+x-frame-options: SAMEORIGIN
+content-security-policy: default-src ws: http: data: blob: 'unsafe-inline' 'unsafe-eval';
+x-content-type-options: nosniff
+x-xss-protection: 1; mode=block
+set-cookie: pga4_session=8527e037-e2b5-4bb5-a066-255ffdcdef82!Idw7cQKIq+vO3p3LAtpQYCe5P9hkMhHNRII5cVwGvOE=; Expires=Sat, 24 Oct 2026 08:47:41 GMT; HttpOnly; Path=/; SameSite=Lax
+x-frame-options: SAMEORIGIN
+x-content-type-options: nosniff
+x-xss-protection: 1; mode=block
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=31536000; includeSubDomains
+content-security-policy: default-src 'self' 'unsafe-inline' 'unsafe-eval' data: https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;
+
+NAME           IMAGE                 COMMAND                  SERVICE        CREATED              STATUS                   PORTS
+hrm-app        hrm-app:1.0           "docker-entrypoint.s…"   hrm-app        3 minutes ago        Up 3 minutes (healthy)   3000/tcp
+hrm-nginx      nginx:1.25-alpine     "/docker-entrypoint.…"   hrm-nginx      3 minutes ago        Up 3 minutes             0.0.0.0:80->80/tcp, [::]:80->80/tcp, 0.0.0.0:443->443/tcp, [::]:443->443/tcp
+hrm-pgadmin    dpage/pgadmin4:8.11   "/entrypoint.sh"         hrm-pgadmin    About a minute ago   Up About a minute        443/tcp, 0.0.0.0:5050->80/tcp, [::]:5050->80/tcp
+hrm-postgres   postgres:16-alpine    "docker-entrypoint.s…"   hrm-postgres   3 minutes ago        Up 3 minutes (healthy)   5432/tcp
