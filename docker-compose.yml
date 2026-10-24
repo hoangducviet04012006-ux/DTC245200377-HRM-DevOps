@@ -17,9 +17,14 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-hrm_db}
       POSTGRES_USER: ${POSTGRES_USER:-hrm_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      APP_DB_USER: ${APP_DB_USER:-hrm_app_user}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+      EXPORTER_DB_USER: ${EXPORTER_DB_USER:-hrm_exporter_user}
+      EXPORTER_DB_PASSWORD: ${EXPORTER_DB_PASSWORD}
     volumes:
       - hrm_pgdata:/var/lib/postgresql/data
-      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./database/init-roles.sh:/docker-entrypoint-initdb.d/02-init-roles.sh:ro
     networks:
       - hrm-backend
     deploy:

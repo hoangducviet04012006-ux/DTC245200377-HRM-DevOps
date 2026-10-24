@@ -92,7 +92,12 @@ BEGIN
     END IF;
 END $$;
 
-GRANT CONNECT ON DATABASE hrm_db TO hrm_app_user;
+DO $$
+BEGIN
+    EXECUTE format('GRANT CONNECT ON DATABASE %I TO hrm_app_user', current_database());
+    EXECUTE format('GRANT CONNECT ON DATABASE %I TO hrm_exporter_user', current_database());
+END $$;
+
 GRANT USAGE ON SCHEMA public TO hrm_app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO hrm_app_user;
 GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO hrm_app_user;
@@ -100,6 +105,5 @@ GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO hrm_app_user;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO hrm_app_user;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO hrm_app_user;
 
-GRANT CONNECT ON DATABASE hrm_db TO hrm_exporter_user;
 GRANT pg_monitor TO hrm_exporter_user;
 GRANT pg_read_all_stats TO hrm_exporter_user;
