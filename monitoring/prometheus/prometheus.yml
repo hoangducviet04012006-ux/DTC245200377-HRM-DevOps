@@ -31,9 +31,17 @@ scrape_configs:
         labels:
           host: 'ubuntu-server'
 
-  # Giám sát Container Resources (cAdvisor)
+  # Giám sát Nginx Web Server (Nginx Prometheus Exporter)
+  - job_name: 'hrm-nginx'
+    static_configs:
+      - targets: ['hrm-nginx-exporter:9113']
+        labels:
+          role: 'web-server'
+          app: 'hrm-nginx'
+
+  # Giám sát Container Resources (cAdvisor độc lập cho HRM)
   - job_name: 'cadvisor'
     static_configs:
-      - targets: ['192.168.186.128:8081']
+      - targets: ['hrm-cadvisor:8080']
         labels:
           role: 'container-metrics'

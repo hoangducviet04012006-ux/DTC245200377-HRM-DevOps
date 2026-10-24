@@ -115,6 +115,7 @@ services:
       - ./nginx/ssl:/etc/nginx/ssl:ro
     networks:
       - hrm-frontend
+      - hrm-monitoring
     deploy:
       resources:
         limits:
@@ -122,10 +123,55 @@ services:
           memory: 128M
 
   # ----------------------------------------------------------------------------
+  # Prometheus Nginx Exporter (Scrapes internal stub_status on port 8080)
+  # ----------------------------------------------------------------------------
+  hrm-nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:1.1.0
+    container_name: hrm-nginx-exporter
+    restart: unless-stopped
+    depends_on:
+      - hrm-nginx
+    command:
+      - -nginx.scrape-uri=http://hrm-nginx:8080/stub_status
+    networks:
+      - hrm-monitoring
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 64M
+
+  # ----------------------------------------------------------------------------
+  # cAdvisor Container Metrics Agent (Independent instance for HRM)
+  # ----------------------------------------------------------------------------
+  hrm-cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.55.1
+    container_name: hrm-cadvisor
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "8082:8080"
+    networks:
+      - hrm-monitoring
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  # ----------------------------------------------------------------------------
   # Prometheus PostgreSQL Exporter
   # ----------------------------------------------------------------------------
   hrm-postgres-exporter:
-    image: prometheuscommunity/postgres-exporter:latest
+    image: prometheuscommunity/postgres-exporter:v0.20.1
     container_name: hrm-postgres-exporter
     restart: unless-stopped
     depends_on:
@@ -141,7 +187,7 @@ services:
   # Prometheus Time-Series Metrics Server
   # ----------------------------------------------------------------------------
   hrm-prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.14.0
     container_name: hrm-prometheus
     restart: unless-stopped
     ports:
@@ -163,7 +209,7 @@ services:
   # Grafana Visualization & Analytics
   # ----------------------------------------------------------------------------
   hrm-grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:13.2.1
     container_name: hrm-grafana
     restart: unless-stopped
     depends_on:
@@ -185,13 +231,13 @@ services:
       resources:
         limits:
           cpus: '0.5'
-          memory: 256M
+          memory: 512M
 
   # ----------------------------------------------------------------------------
   # Grafana Loki - Log Aggregation Engine
   # ----------------------------------------------------------------------------
   hrm-loki:
-    image: grafana/loki:latest
+    image: grafana/loki:3.7.7
     container_name: hrm-loki
     restart: unless-stopped
     ports:
@@ -212,7 +258,7 @@ services:
   # Promtail - Log Shipping Agent
   # ----------------------------------------------------------------------------
   hrm-promtail:
-    image: grafana/promtail:latest
+    image: grafana/promtail:3.6.8
     container_name: hrm-promtail
     restart: unless-stopped
     depends_on:

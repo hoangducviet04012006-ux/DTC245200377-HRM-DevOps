@@ -1,0 +1,64 @@
+======================================================================
+BẮT ĐẦU KIỂM TRA PROMPT 4: GIÁM SÁT 3 NHÓM (CONTAINER, WEB, DATABASE)
+Thời gian kiểm tra: 2026-10-24 16:14:47
+======================================================================
+
+[TEST 1] Kiểm tra /stub_status bị chặn trên các cổng web công khai:
+  - Port 80 (HTTP) /stub_status status code: 403
+  - Port 443 (HTTPS) /stub_status status code: 403
+  -> PASS: stub_status bị chặn hoàn toàn (403 Forbidden) trên cả cổng 80 và 443.
+
+[TEST 2] Kiểm tra stub_status chỉ truy cập được qua listener nội bộ (port 8080):
+  - Output từ listener nội bộ:
+    Active connections: 2 
+    server accepts handled requests
+     9 9 24 
+    Reading: 0 Writing: 1 Waiting: 1 
+  -> PASS: Listener nội bộ 8080 trả về stub_status chuẩn cho Exporter.
+
+[TEST 3] Kiểm tra dịch vụ cAdvisor độc lập của HRM (hrm-cadvisor):
+  -> PASS: hrm-cadvisor hoạt động độc lập (cổng 8082), thu thập metrics container thành công.
+
+[TEST 4] Kiểm tra Nginx Prometheus Exporter (hrm-nginx-exporter):
+  - nginx_connections_active 1
+  - nginx_http_requests_total 25
+  - nginx_up 1
+  -> PASS: hrm-nginx-exporter kết nối thành công tới stub_status nội bộ (nginx_up = 1).
+
+[TEST 5] Kiểm tra PostgreSQL Prometheus Exporter (hrm-postgres-exporter):
+  - pg_up 1
+  -> PASS: hrm-postgres-exporter kết nối thành công tới database hrm_db (pg_up = 1).
+
+[TEST 6] Kiểm tra tất cả Targets trong Prometheus (Group: Container, Web, Database):
+  - Job [cadvisor            ]: http://hrm-cadvisor:8080/metrics         -> Health: UP
+  - Job [hrm-app             ]: http://hrm-app:3000/metrics              -> Health: UP
+  - Job [hrm-nginx           ]: http://hrm-nginx-exporter:9113/metrics   -> Health: UP
+  - Job [hrm-postgres        ]: http://hrm-postgres-exporter:9187/metrics -> Health: UP
+  - Job [node-exporter       ]: http://192.168.186.128:9100/metrics      -> Health: UP
+  - Job [prometheus          ]: http://localhost:9090/metrics            -> Health: UP
+  -> PASS: Toàn bộ 6/6 Targets trong Prometheus đều ở trạng thái UP.
+
+[TEST 7] Kiểm tra Grafana Dashboard & Datasource Prometheus-HRM:
+  -> PASS: Dashboard 'HRM Core - Giám Sát Hiệu Năng Hệ Thống (DTC245200377)' đã được nạp tự động vào Grafana.
+
+[TEST 8] Kiểm tra dữ liệu thời gian thực của cả 3 nhóm metric trong Prometheus:
+  - [Nhóm 1 (Container)  ] Số container HRM đang chạy          = 20
+  - [Nhóm 1 (Container)  ] Tổng RAM các container (Bytes)      = 1908891648
+  - [Nhóm 2 (Web Server) ] Nginx Active Connections            = 1
+  - [Nhóm 2 (Web Server) ] Tổng HTTP Requests HRM App          = 139
+  - [Nhóm 3 (Database)   ] Số kết nối hrm_db đang mở           = 3
+  - [Nhóm 3 (Database)   ] Dung lượng hrm_db (Bytes)           = 8059927
+  -> PASS: Cả 3 nhóm (Container, Web Server, Database) đều có dữ liệu đo đạc thực tế.
+
+[TEST 9] Kiểm tra ngưỡng an toàn bộ nhớ của Grafana (Giới hạn 512MB):
+- hrm-grafana: Sử dụng 290.1MiB / 512MiB (56.65%)
+- hrm-prometheus: Sử dụng 131.8MiB / 256MiB (51.50%)
+- hrm-cadvisor: Sử dụng 101MiB / 256MiB (39.44%)
+
+[TEST 10] Kiểm tra toàn vẹn dữ liệu cơ sở dữ liệu (Không reset DB):
+  - Dữ liệu hiện tại: 8 nhân viên active, 4 phòng ban, 1 user admin.
+  -> PASS: Toàn vẹn 8 nhân viên và 4 phòng ban được bảo lưu 100%.
+
+======================================================================
+KẾT QUẢ: TẤT CẢ 10/10 MỤC KIỂM THỬ PROMPT 4 ĐỀU ĐẠT CHUẨN (PASS)
+======================================================================

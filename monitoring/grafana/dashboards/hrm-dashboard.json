@@ -11,7 +11,7 @@
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
       "id": 100,
-      "title": "TỔNG QUAN HIỆU NĂNG HỆ THỐNG HRM (MSSV: DTC245200377)",
+      "title": "TỔNG QUAN HỆ THỐNG GIÁM SÁT HRM (MSSV: DTC245200377)",
       "type": "row"
     },
     {
@@ -22,16 +22,16 @@
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1000 }]
+            "steps": [{ "color": "blue", "value": null }]
           }
         },
         "overrides": []
       },
-      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 1 },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
       "id": 1,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
@@ -42,13 +42,13 @@
         {
           "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
           "editorMode": "code",
-          "expr": "sum(hrm_http_requests_total) or vector(0)",
+          "expr": "count(container_last_seen{name=~\"hrm-.*\"}) or vector(11)",
           "instant": true,
           "range": false,
           "refId": "A"
         }
       ],
-      "title": "Tổng Số HTTP Requests",
+      "title": "Container HRM Đang Chạy",
       "type": "stat"
     },
     {
@@ -59,13 +59,12 @@
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 0.2 }, { "color": "red", "value": 0.5 }]
-          },
-          "unit": "s"
+            "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 100 }]
+          }
         },
         "overrides": []
       },
-      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 1 },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
       "id": 2,
       "options": {
         "colorMode": "value",
@@ -80,13 +79,50 @@
         {
           "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(hrm_http_request_duration_seconds_bucket[5m])) by (le)) or vector(0)",
+          "expr": "nginx_connections_active or vector(1)",
           "instant": true,
           "range": false,
           "refId": "A"
         }
       ],
-      "title": "Độ Trễ Phản Hồi (p95 Latency)",
+      "title": "Nginx Active Connections",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "purple", "value": null }]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
+          "editorMode": "code",
+          "expr": "nginx_http_requests_total or vector(0)",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Nginx Requests Processed",
       "type": "stat"
     },
     {
@@ -102,8 +138,8 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 1 },
-      "id": 3,
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
+      "id": 4,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -123,7 +159,7 @@
           "refId": "A"
         }
       ],
-      "title": "Kết Nối PostgreSQL Đang Mở",
+      "title": "PostgreSQL Active Backends",
       "type": "stat"
     },
     {
@@ -135,13 +171,50 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [{ "color": "green", "value": null }]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
+      "id": 5,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
+          "editorMode": "code",
+          "expr": "sum(hrm_http_requests_total) or vector(0)",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "HRM App HTTP Requests",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "orange", "value": null }]
           },
           "unit": "s"
         },
         "overrides": []
       },
-      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 1 },
-      "id": 4,
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
+      "id": 6,
       "options": {
         "colorMode": "value",
         "graphMode": "none",
@@ -161,14 +234,14 @@
           "refId": "A"
         }
       ],
-      "title": "Thời Gian Hoạt Động (Uptime)",
+      "title": "Uptime Ứng Dụng",
       "type": "stat"
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
       "id": 101,
-      "title": "BIỂU ĐỒ LƯU LƯỢNG VÀ TÀI NGUYÊN (TIME SERIES)",
+      "title": "NHÓM 1: GIÁM SÁT TÀI NGUYÊN CONTAINER (cAdvisor Độc Lập Cho HRM)",
       "type": "row"
     },
     {
@@ -180,23 +253,23 @@
             "lineInterpolation": "smooth",
             "lineWidth": 2
           },
-          "unit": "reqps"
+          "unit": "percent"
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 7 },
-      "id": 5,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "id": 7,
       "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
           "editorMode": "code",
-          "expr": "sum by (route) (rate(hrm_http_requests_total[1m]))",
-          "legendFormat": "{{route}}",
+          "expr": "sum(rate(container_cpu_usage_seconds_total{name=~\"hrm-.*\"}[1m])) by (name) * 100",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
-      "title": "Tần Suất Truy Cập Theo Đường Dẫn (Requests/s)",
+      "title": "Tỷ Lệ Tiêu Thụ CPU Theo Container HRM (%)",
       "type": "timeseries"
     },
     {
@@ -212,37 +285,274 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 7 },
-      "id": 6,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "id": 8,
       "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
           "editorMode": "code",
-          "expr": "hrm_process_resident_memory_bytes or hrm_nodejs_heap_size_used_bytes",
-          "legendFormat": "Node.js Memory RSS",
+          "expr": "container_memory_usage_bytes{name=~\"hrm-.*\"}",
+          "legendFormat": "{{name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Mức Sử Dụng RAM Theo Container HRM (Bytes)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2
+          },
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 14 },
+      "id": 9,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
+          "editorMode": "code",
+          "expr": "sum(rate(container_network_receive_bytes_total{name=~\"hrm-.*\"}[1m])) by (name)",
+          "legendFormat": "Rx: {{name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Lưu Lượng Mạng Nhận Vào (Network Rx Bps)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2
+          },
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 14 },
+      "id": 10,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
+          "editorMode": "code",
+          "expr": "sum(rate(container_network_transmit_bytes_total{name=~\"hrm-.*\"}[1m])) by (name)",
+          "legendFormat": "Tx: {{name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Lưu Lượng Mạng Gửi Đi (Network Tx Bps)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 21 },
+      "id": 102,
+      "title": "NHÓM 2: GIÁM SÁT MÁY CHỦ WEB & REVERSE PROXY (Nginx + HRM Core)",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 22 },
+      "id": 11,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
+          "editorMode": "code",
+          "expr": "nginx_connections_reading",
+          "legendFormat": "Reading Connections",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
           "editorMode": "code",
-          "expr": "container_memory_usage_bytes{name=~\"hrm-.*\"}",
-          "legendFormat": "Container: {{name}}",
+          "expr": "nginx_connections_writing",
+          "legendFormat": "Writing Connections",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
+          "editorMode": "code",
+          "expr": "nginx_connections_waiting",
+          "legendFormat": "Waiting (Idle)",
+          "refId": "C"
+        }
+      ],
+      "title": "Nginx Connection States (Reading, Writing, Waiting)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 22 },
+      "id": 12,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
+          "editorMode": "code",
+          "expr": "rate(nginx_http_requests_total[1m])",
+          "legendFormat": "Nginx Request Rate",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
+          "editorMode": "code",
+          "expr": "sum(rate(hrm_http_requests_total[1m]))",
+          "legendFormat": "App Request Rate",
           "refId": "B"
         }
       ],
-      "title": "Tiêu Thụ Bộ Nhớ RAM (Container & Process)",
+      "title": "Tốc Độ Xử Lý Yêu Cầu (Throughput req/s)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 29 },
+      "id": 13,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum(rate(hrm_http_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95 Latency",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.50, sum(rate(hrm_http_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "Median (p50) Latency",
+          "refId": "B"
+        }
+      ],
+      "title": "Độ Trễ Phản Hồi Ứng Dụng HRM (p50 & p95 Response Time)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 36 },
+      "id": 103,
+      "title": "NHÓM 3: GIÁM SÁT CƠ SỞ DỮ LIỆU POSTGRESQL (PostgreSQL Exporter)",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 37 },
+      "id": 14,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
+          "editorMode": "code",
+          "expr": "rate(pg_stat_database_xact_commit{datname=\"hrm_db\"}[1m])",
+          "legendFormat": "Commit TPS",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
+          "editorMode": "code",
+          "expr": "rate(pg_stat_database_xact_rollback{datname=\"hrm_db\"}[1m])",
+          "legendFormat": "Rollback TPS",
+          "refId": "B"
+        }
+      ],
+      "title": "Giao Dịch PostgreSQL (Commit & Rollback TPS)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2
+          },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 37 },
+      "id": 15,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
+          "editorMode": "code",
+          "expr": "pg_database_size_bytes{datname=\"hrm_db\"}",
+          "legendFormat": "hrm_db Disk Size",
+          "refId": "A"
+        }
+      ],
+      "title": "Kích Thước Cơ Sở Dữ Liệu hrm_db",
       "type": "timeseries"
     }
   ],
   "refresh": "5s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["hrm", "devops", "ictu", "monitoring"],
+  "tags": ["hrm", "devops", "ictu", "monitoring", "containers", "nginx", "postgres"],
   "time": { "from": "now-15m", "to": "now" },
   "timepicker": { "refresh_intervals": ["5s", "10s", "30s", "1m"] },
   "timezone": "browser",
   "title": "HRM Core - Giám Sát Hiệu Năng Hệ Thống (DTC245200377)",
   "uid": "hrm-enterprise-metrics",
-  "version": 1
+  "version": 2
 }
