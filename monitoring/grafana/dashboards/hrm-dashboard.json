@@ -42,8 +42,9 @@
         {
           "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
           "editorMode": "code",
-          "expr": "count(count by (name) (container_last_seen{container_label_com_docker_compose_project=\"hrm\"})) or vector(11)",
+          "expr": "count(count by (name) (container_last_seen{container_label_com_docker_compose_project=\"hrm\"}))",
           "instant": true,
+          "legendFormat": "Running Containers",
           "range": false,
           "refId": "A"
         }
@@ -79,8 +80,9 @@
         {
           "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
           "editorMode": "code",
-          "expr": "nginx_connections_active or vector(1)",
+          "expr": "nginx_connections_active{job=\"hrm-nginx\"}",
           "instant": true,
+          "legendFormat": "Active Connections",
           "range": false,
           "refId": "A"
         }
@@ -116,8 +118,9 @@
         {
           "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
           "editorMode": "code",
-          "expr": "nginx_http_requests_total or vector(0)",
+          "expr": "nginx_http_requests_total{job=\"hrm-nginx\"}",
           "instant": true,
+          "legendFormat": "Processed Requests",
           "range": false,
           "refId": "A"
         }
@@ -153,8 +156,9 @@
         {
           "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
           "editorMode": "code",
-          "expr": "pg_stat_database_numbackends{datname=\"hrm_db\"} or vector(1)",
+          "expr": "pg_stat_database_numbackends{datname=\"hrm_db\"}",
           "instant": true,
+          "legendFormat": "hrm_db Backends",
           "range": false,
           "refId": "A"
         }
@@ -190,8 +194,9 @@
         {
           "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
           "editorMode": "code",
-          "expr": "sum(hrm_http_requests_total) or vector(0)",
+          "expr": "sum(hrm_http_requests_total)",
           "instant": true,
+          "legendFormat": "Total Requests",
           "range": false,
           "refId": "A"
         }
@@ -228,8 +233,9 @@
         {
           "datasource": { "type": "prometheus", "uid": "Prometheus-HRM" },
           "editorMode": "code",
-          "expr": "hrm_process_uptime_seconds or vector(0)",
+          "expr": "time() - hrm_process_start_time_seconds{job=\"hrm-app\"}",
           "instant": true,
+          "legendFormat": "Uptime",
           "range": false,
           "refId": "A"
         }
@@ -490,7 +496,7 @@
             "lineInterpolation": "smooth",
             "lineWidth": 2
           },
-          "unit": "reqps"
+          "unit": "tps"
         },
         "overrides": []
       },
@@ -554,5 +560,5 @@
   "timezone": "browser",
   "title": "HRM Core - Giám Sát Hiệu Năng Hệ Thống (DTC245200377)",
   "uid": "hrm-enterprise-metrics",
-  "version": 2
+  "version": 3
 }
